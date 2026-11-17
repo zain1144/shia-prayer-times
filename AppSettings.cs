@@ -116,8 +116,10 @@ namespace ShiaPrayerTimes
 
         public int NotificationDurationSeconds { get; set; } // 0 = persistent, 5, 10, 15, 30, 60
         public string NotificationStyle { get; set; }        // "CustomToast", "WindowsNative"
-        public string ToastPosition { get; set; }            // "BottomRight", "BottomLeft", "TopRight", "TopLeft", "TopCenter", "Center"
+        public string ToastPosition { get; set; }            // "BottomRight", "BottomLeft", "TopRight", "TopLeft", "TopCenter", "Center", "Custom"
         public string ToastSize { get; set; }                // "Small", "Medium", "Large", "Wide"
+        public double CustomToastLeft { get; set; }          // Drag & Drop saved X position
+        public double CustomToastTop { get; set; }           // Drag & Drop saved Y position
 
         public List<AdhanSound> AdhanLibrary { get; set; }
         public Dictionary<string, PrayerEventConfig> Prayers { get; set; }
@@ -134,6 +136,8 @@ namespace ShiaPrayerTimes
             NotificationStyle = "CustomToast";
             ToastPosition = "BottomRight";
             ToastSize = "Medium";
+            CustomToastLeft = -1;
+            CustomToastTop = -1;
 
             Location = new LocationPreset("القطيف - المملكة العربية السعودية (Qatif)", 26.5577, 50.0081, 3.0, 0);
 
@@ -354,6 +358,7 @@ namespace ShiaPrayerTimes
             if (NotificationDurationSeconds < 0) NotificationDurationSeconds = 10;
             if (string.IsNullOrEmpty(NotificationStyle)) NotificationStyle = "CustomToast";
             if (string.IsNullOrEmpty(ToastPosition)) ToastPosition = "BottomRight";
+            if (ToastPosition == "Custom" && (CustomToastLeft < 0 || CustomToastTop < 0)) ToastPosition = "BottomRight";
             if (string.IsNullOrEmpty(ToastSize)) ToastSize = "Medium";
 
             if (Prayers == null) Prayers = new Dictionary<string, PrayerEventConfig>(StringComparer.OrdinalIgnoreCase);

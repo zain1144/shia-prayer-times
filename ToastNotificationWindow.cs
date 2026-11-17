@@ -25,13 +25,21 @@ namespace ShiaPrayerTimes
         private Action _onClickAction;
         private string _position = "BottomRight";
         private string _size = "Medium";
+        private double _customLeft = -1;
+        private double _customTop = -1;
+        private Action<double, double> _onPositionDragged = null;
 
         public static void ShowToast(string title, string message, int durationSeconds, bool isDark, bool isAr, string iconSymbol = "🕌", Action onClick = null)
         {
-            ShowToast(title, message, durationSeconds, isDark, isAr, iconSymbol, "BottomRight", "Medium", onClick);
+            ShowToast(title, message, durationSeconds, isDark, isAr, iconSymbol, "BottomRight", "Medium", -1, -1, null, onClick);
         }
 
         public static void ShowToast(string title, string message, int durationSeconds, bool isDark, bool isAr, string iconSymbol, string position, string size, Action onClick = null)
+        {
+            ShowToast(title, message, durationSeconds, isDark, isAr, iconSymbol, position, size, -1, -1, null, onClick);
+        }
+
+        public static void ShowToast(string title, string message, int durationSeconds, bool isDark, bool isAr, string iconSymbol, string position, string size, double customLeft, double customTop, Action<double, double> onPositionDragged, Action onClick = null)
         {
             try
             {
@@ -45,7 +53,7 @@ namespace ShiaPrayerTimes
                         _activeToast = null;
                     }
 
-                    var toast = new ToastNotificationWindow(title, message, durationSeconds, isDark, isAr, iconSymbol, position, size, onClick);
+                    var toast = new ToastNotificationWindow(title, message, durationSeconds, isDark, isAr, iconSymbol, position, size, customLeft, customTop, onPositionDragged, onClick);
                     _activeToast = toast;
                     toast.Show();
                 }));
@@ -57,15 +65,23 @@ namespace ShiaPrayerTimes
         }
 
         public ToastNotificationWindow(string title, string message, int durationSeconds, bool isDark, bool isAr, string iconSymbol, Action onClick)
-            : this(title, message, durationSeconds, isDark, isAr, iconSymbol, "BottomRight", "Medium", onClick)
+            : this(title, message, durationSeconds, isDark, isAr, iconSymbol, "BottomRight", "Medium", -1, -1, null, onClick)
         {
         }
 
         public ToastNotificationWindow(string title, string message, int durationSeconds, bool isDark, bool isAr, string iconSymbol, string position, string size, Action onClick)
+            : this(title, message, durationSeconds, isDark, isAr, iconSymbol, position, size, -1, -1, null, onClick)
+        {
+        }
+
+        public ToastNotificationWindow(string title, string message, int durationSeconds, bool isDark, bool isAr, string iconSymbol, string position, string size, double customLeft, double customTop, Action<double, double> onPositionDragged, Action onClick)
         {
             _onClickAction = onClick;
             _position = string.IsNullOrEmpty(position) ? "BottomRight" : position;
             _size = string.IsNullOrEmpty(size) ? "Medium" : size;
+            _customLeft = customLeft;
+            _customTop = customTop;
+            _onPositionDragged = onPositionDragged;
             _duration = TimeSpan.FromSeconds(Math.Max(0, durationSeconds));
 
             // Dimension and scale metrics based on size
@@ -140,12 +156,24 @@ namespace ShiaPrayerTimes
                 }
             };
 
-            // Allow dragging toast to any custom position
+            // Allow dragging toast to any custom position and automatically save the new location
             outerBorder.MouseLeftButtonDown += (s, e) =>
             {
                 if (e.ButtonState == MouseButtonState.Pressed)
                 {
+                    double prevLeft = Left;
+                    double prevTop = Top;
                     try { DragMove(); } catch { }
+                    if (Math.Abs(Left - prevLeft) > 5 || Math.Abs(Top - prevTop) > 5)
+                    {
+                        _customLeft = Left;
+                        _customTop = Top;
+                        _position = "Custom";
+                        if (_onPositionDragged != null)
+                        {
+                            _onPositionDragged(Left, Top);
+                        }
+                    }
                 }
             };
 
@@ -337,6 +365,15 @@ namespace ShiaPrayerTimes
             double margin = 12.0;
 
             string pos = string.IsNullOrEmpty(position) ? "BottomRight" : position;
+
+            if (string.Equals(pos, "Custom", StringComparison.OrdinalIgnoreCase) && _customLeft >= 0 && _customTop >= 0)
+            {
+                double maxL = Math.Max(workArea.Left, workArea.Right - w);
+                double maxT = Math.Max(workArea.Top, workArea.Bottom - h);
+                Left = Math.Max(workArea.Left, Math.Min(maxL, _customLeft));
+                Top = Math.Max(workArea.Top, Math.Min(maxT, _customTop));
+                return;
+            }
 
             switch (pos)
             {

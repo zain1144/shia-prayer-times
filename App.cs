@@ -11,8 +11,19 @@ namespace ShiaPrayerTimes
         [STAThread]
         public static void Main(string[] args)
         {
-            bool createdNew;
-            _appMutex = new Mutex(true, "ShiaPrayerTimesApp_SingleInstanceMutex_2026", out createdNew);
+            bool createdNew = false;
+            try
+            {
+                _appMutex = new Mutex(true, "ShiaPrayerTimesApp_SingleInstanceMutex_2026", out createdNew);
+            }
+            catch (AbandonedMutexException)
+            {
+                createdNew = true;
+            }
+            catch
+            {
+                createdNew = true;
+            }
 
             if (!createdNew)
             {

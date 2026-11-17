@@ -202,6 +202,8 @@ namespace ShiaPrayerTimes
             string style = _settings.NotificationStyle ?? "CustomToast";
             string position = _settings.ToastPosition ?? "BottomRight";
             string size = _settings.ToastSize ?? "Medium";
+            double cLeft = _settings.CustomToastLeft;
+            double cTop = _settings.CustomToastTop;
 
             if (style.Equals("WindowsNative", StringComparison.OrdinalIgnoreCase))
             {
@@ -213,23 +215,31 @@ namespace ShiaPrayerTimes
             }
             else
             {
-                ToastNotificationWindow.ShowToast(title, body, duration, isDark, isAr, iconSymbol, position, size, () =>
-                {
-                    try
+                ToastNotificationWindow.ShowToast(title, body, duration, isDark, isAr, iconSymbol, position, size, cLeft, cTop,
+                    (newLeft, newTop) =>
                     {
-                        if (System.Windows.Application.Current != null && System.Windows.Application.Current.MainWindow != null)
+                        _settings.CustomToastLeft = newLeft;
+                        _settings.CustomToastTop = newTop;
+                        _settings.ToastPosition = "Custom";
+                        _settings.Save();
+                    },
+                    () =>
+                    {
+                        try
                         {
-                            var mw = System.Windows.Application.Current.MainWindow;
-                            if (mw.WindowState == System.Windows.WindowState.Minimized)
+                            if (System.Windows.Application.Current != null && System.Windows.Application.Current.MainWindow != null)
                             {
-                                mw.WindowState = System.Windows.WindowState.Normal;
+                                var mw = System.Windows.Application.Current.MainWindow;
+                                if (mw.WindowState == System.Windows.WindowState.Minimized)
+                                {
+                                    mw.WindowState = System.Windows.WindowState.Normal;
+                                }
+                                mw.Show();
+                                mw.Activate();
                             }
-                            mw.Show();
-                            mw.Activate();
                         }
-                    }
-                    catch { }
-                });
+                        catch { }
+                    });
             }
         }
 

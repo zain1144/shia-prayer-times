@@ -1535,6 +1535,7 @@ namespace ShiaPrayerTimes
             _toastPositionCombo.Items.Add(new ComboBoxItem { Content = isAr ? "أعلى اليسار" : "Top-Left", Tag = "TopLeft" });
             _toastPositionCombo.Items.Add(new ComboBoxItem { Content = isAr ? "أعلى الوسط (شريط علوي)" : "Top-Center (Top Banner)", Tag = "TopCenter" });
             _toastPositionCombo.Items.Add(new ComboBoxItem { Content = isAr ? "وسط الشاشة (تنبيه مركزي)" : "Screen Center (Center)", Tag = "Center" });
+            _toastPositionCombo.Items.Add(new ComboBoxItem { Content = isAr ? "🎯 موضع مخصص (تم سحبه وحفظه بالماوس)" : "🎯 Custom Position (Saved via Drag & Drop)", Tag = "Custom" });
 
             string curPos = _settings.ToastPosition ?? "BottomRight";
             int posIdx = 0;
