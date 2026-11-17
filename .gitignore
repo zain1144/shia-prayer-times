@@ -1,0 +1,9 @@
+# Build outputs
+*.old.exe
+*.temp_old.exe
+*.TMP
+*.tmp
+*.pdb
+
+# Local settings (keep defaults)
+# User settings in %APPDATA% are kept outside the repo
