@@ -1059,7 +1059,7 @@ namespace ShiaPrayerTimes
             // 1. Visual Only
             var btnVisual = new System.Windows.Controls.Button
             {
-                Content = isAr ? "👁️ إشعار مرئي فقط (بدون صوت)" : "👁️ Visual Toast Only (Silent)",
+                Content = isAr ? "👁️ إشعار مرئي فقط (Visual Toast)" : "👁️ Visual Toast Only",
                 Padding = new Thickness(14, 8, 14, 8),
                 Margin = new Thickness(0, 0, 8, 8),
                 Background = UIThemeHelper.GetBrush(Color.FromRgb(2, 132, 199)),
@@ -1072,7 +1072,7 @@ namespace ShiaPrayerTimes
             btnVisual.Click += (s, e) =>
             {
                 _audioNotifier.TestVisualNotification(isAr ? "الظهر" : "Dhuhr", "Dhuhr", isAr ? "12:00 م" : "12:00 PM");
-                testStatusLabel.Text = isAr ? "✓ تم إرسال إشعار مرئي فقط (صامت) إلى زاوية الشاشة بنجاح!" : "✓ Visual toast (silent) notification sent successfully!";
+                testStatusLabel.Text = isAr ? "✓ تم إرسال إشعار مرئي فقط إلى زاوية الشاشة بنجاح!" : "✓ Visual toast notification sent successfully!";
                 testStatusLabel.Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentEmerald);
             };
             testBtnWrap.Children.Add(btnVisual);

@@ -193,8 +193,8 @@ namespace ShiaPrayerTimes
         {
             string title = _settings.Language == "ar" ? "تجربة: إشعار مرئي فقط" : "Test: Visual Toast Only";
             string body = _settings.Language == "ar"
-                ? string.Format("حان الآن موعد صلاة {0} ({1}) - بدون صوت", prayerNameAr, timeStr)
-                : string.Format("It is now time for {0} ({1}) - Silent Mode", prayerNameEn, timeStr);
+                ? string.Format("حان الآن موعد صلاة {0} ({1})", prayerNameAr, timeStr)
+                : string.Format("It is now time for {0} ({1})", prayerNameEn, timeStr);
 
             if (_notifyIcon != null)
             {
