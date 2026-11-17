@@ -73,12 +73,15 @@ namespace ShiaPrayerTimes
             bool isDark = _settings.Theme == "Dark";
 
             Title = isAr ? "إعدادات أوقات الصلاة" : "Prayer Times Settings";
-            Width = 960;
-            Height = 700;
+            Width = 1040;
+            Height = 720;
+            MinWidth = 980;
+            MinHeight = 650;
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
             FlowDirection = isAr ? System.Windows.FlowDirection.RightToLeft : System.Windows.FlowDirection.LeftToRight;
 
             WindowStyle = WindowStyle.None;
+            ResizeMode = ResizeMode.CanResize;
 
             Background = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkBg : UIThemeHelper.LightBg);
             Foreground = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkTextPrimary : UIThemeHelper.LightTextPrimary);
@@ -103,7 +106,7 @@ namespace ShiaPrayerTimes
                 isDark,
                 isAr,
                 null,
-                false);
+                true);
             Grid.SetRow(titleBar, 0);
             mainGrid.Children.Add(titleBar);
 
@@ -192,7 +195,7 @@ namespace ShiaPrayerTimes
 
         private UIElement CreateMatrixTabContent(bool isDark, bool isAr)
         {
-            var scroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+            var scroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto };
             var panel = new StackPanel { Margin = new Thickness(16) };
 
             var introText = new TextBlock
@@ -209,11 +212,11 @@ namespace ShiaPrayerTimes
 
             // Table Header
             var headerGrid = new Grid { Margin = new Thickness(0, 0, 0, 8) };
-            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(140) });
-            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(85) });
-            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(165) });
-            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
+            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(130) });
+            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(70) });
             headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(135) });
+            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(125) });
+            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) });
             headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
             headerGrid.Children.Add(MakeHeaderLabel(isAr ? "الوقت" : "Event", 0));
@@ -221,7 +224,7 @@ namespace ShiaPrayerTimes
             headerGrid.Children.Add(MakeHeaderLabel(isAr ? "الضبط (دقيقة)" : "Offset (min)", 2));
             headerGrid.Children.Add(MakeHeaderLabel(isAr ? "التنبيه" : "Alert Mode", 3));
             headerGrid.Children.Add(MakeHeaderLabel(isAr ? "تذكير مسبق" : "Reminder", 4));
-            headerGrid.Children.Add(MakeHeaderLabel(isAr ? "الصوت المخصص" : "Sound Choice", 5));
+            headerGrid.Children.Add(MakeHeaderLabel(isAr ? "الصوت والتجربة (🔔)" : "Sound & Test (🔔)", 5));
 
             panel.Children.Add(headerGrid);
 
@@ -249,11 +252,11 @@ namespace ShiaPrayerTimes
                 }
 
                 var rowGrid = new Grid { Margin = new Thickness(0, 6, 0, 6) };
-                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(140) });
-                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(85) });
-                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(165) });
-                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
+                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(130) });
+                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(70) });
                 rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(135) });
+                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(125) });
+                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) });
                 rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
                 // Event Name with High Contrast Pure White
@@ -261,7 +264,7 @@ namespace ShiaPrayerTimes
                 {
                     Text = isAr ? string.Format("{0} ({1})", namesAr[ev], ev) : string.Format("{0} ({1})", ev, namesAr[ev]),
                     FontWeight = FontWeights.Bold,
-                    FontSize = 13,
+                    FontSize = 12.5,
                     VerticalAlignment = VerticalAlignment.Center,
                     Foreground = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkTextPrimary : UIThemeHelper.LightTextPrimary)
                 };
@@ -288,7 +291,7 @@ namespace ShiaPrayerTimes
                     Minimum = -15,
                     Maximum = 15,
                     Value = cfg.OffsetMinutes,
-                    Width = 100,
+                    Width = 80,
                     IsSnapToTickEnabled = true,
                     TickFrequency = 1,
                     VerticalAlignment = VerticalAlignment.Center
@@ -296,7 +299,7 @@ namespace ShiaPrayerTimes
                 var valText = new TextBlock
                 {
                     Text = (cfg.OffsetMinutes > 0 ? "+" : "") + cfg.OffsetMinutes + (isAr ? " د" : " min"),
-                    Width = 55,
+                    Width = 48,
                     Margin = new Thickness(6, 0, 0, 0),
                     VerticalAlignment = VerticalAlignment.Center,
                     FontSize = 12,
@@ -318,7 +321,7 @@ namespace ShiaPrayerTimes
                 // Notification Mode
                 var notifCombo = new System.Windows.Controls.ComboBox
                 {
-                    Width = 135,
+                    Width = 118,
                     Height = 30,
                     VerticalAlignment = VerticalAlignment.Center,
                     HorizontalAlignment = System.Windows.HorizontalAlignment.Left
@@ -342,18 +345,18 @@ namespace ShiaPrayerTimes
                 // Reminder Dropdown
                 var remCombo = new System.Windows.Controls.ComboBox
                 {
-                    Width = 120,
+                    Width = 102,
                     Height = 30,
                     VerticalAlignment = VerticalAlignment.Center,
                     HorizontalAlignment = System.Windows.HorizontalAlignment.Left
                 };
                 UIThemeHelper.StyleComboBox(remCombo, isDark);
                 remCombo.Items.Add(new ComboBoxItem { Content = isAr ? "إيقاف" : "Off", Tag = 0 });
-                remCombo.Items.Add(new ComboBoxItem { Content = isAr ? "قبل 5 دقائق" : "5 min before", Tag = 5 });
-                remCombo.Items.Add(new ComboBoxItem { Content = isAr ? "قبل 10 دقائق" : "10 min before", Tag = 10 });
-                remCombo.Items.Add(new ComboBoxItem { Content = isAr ? "قبل 15 دقيقة" : "15 min before", Tag = 15 });
-                remCombo.Items.Add(new ComboBoxItem { Content = isAr ? "قبل 20 دقيقة" : "20 min before", Tag = 20 });
-                remCombo.Items.Add(new ComboBoxItem { Content = isAr ? "قبل 30 دقيقة" : "30 min before", Tag = 30 });
+                remCombo.Items.Add(new ComboBoxItem { Content = isAr ? "قبل 5 د" : "5 min before", Tag = 5 });
+                remCombo.Items.Add(new ComboBoxItem { Content = isAr ? "قبل 10 د" : "10 min before", Tag = 10 });
+                remCombo.Items.Add(new ComboBoxItem { Content = isAr ? "قبل 15 د" : "15 min before", Tag = 15 });
+                remCombo.Items.Add(new ComboBoxItem { Content = isAr ? "قبل 20 د" : "20 min before", Tag = 20 });
+                remCombo.Items.Add(new ComboBoxItem { Content = isAr ? "قبل 30 د" : "30 min before", Tag = 30 });
 
                 int remIdx = 0;
                 int[] remVals = new int[] { 0, 5, 10, 15, 20, 30 };
@@ -370,7 +373,7 @@ namespace ShiaPrayerTimes
                 var soundPanel = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
                 var soundCombo = new System.Windows.Controls.ComboBox
                 {
-                    Width = 155,
+                    Width = 145,
                     Height = 30,
                     VerticalAlignment = VerticalAlignment.Center
                 };
@@ -501,7 +504,7 @@ namespace ShiaPrayerTimes
 
         private UIElement CreateCalcTabContent(bool isDark, bool isAr)
         {
-            var scroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+            var scroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto };
             var panel = new StackPanel { Margin = new Thickness(24) };
 
             panel.Children.Add(UIThemeHelper.CreateLabel(
@@ -685,7 +688,7 @@ namespace ShiaPrayerTimes
 
         private UIElement CreateLocationTabContent(bool isDark, bool isAr)
         {
-            var scroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+            var scroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto };
             var panel = new StackPanel { Margin = new Thickness(24) };
 
             // Automatic Location Detection Button Header
@@ -937,7 +940,7 @@ namespace ShiaPrayerTimes
 
         private UIElement CreateAudioSystemTabContent(bool isDark, bool isAr)
         {
-            var scroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+            var scroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto };
             var panel = new StackPanel { Margin = new Thickness(24) };
 
             // Master Volume
