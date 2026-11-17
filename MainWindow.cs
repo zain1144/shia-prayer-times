@@ -24,7 +24,6 @@ namespace ShiaPrayerTimes
         private TextBlock _hijriDateText;
         private TextBlock _locationBadgeText;
         private ComboBox _quickLocationCombo;
-        private Button _quickDetectBtn;
         private Button _muteBtn;
         private Button _themeBtn;
         private Button _langBtn;
@@ -291,33 +290,6 @@ namespace ShiaPrayerTimes
                 }
             };
             actionStack.Children.Add(_quickLocationCombo);
-
-            // Quick Auto-Detect Location Button
-            _quickDetectBtn = CreateHeaderIconButton("📍", isAr ? "تحديد موقعي تلقائياً" : "Auto-Detect My Location", isDark);
-            _quickDetectBtn.Click += async (s, e) =>
-            {
-                _quickDetectBtn.IsEnabled = false;
-                var res = await Task.Run(() => LocationDetector.DetectLocation());
-                _quickDetectBtn.IsEnabled = true;
-
-                if (res.Success)
-                {
-                    _settings.Location.Name = res.Name;
-                    _settings.Location.Latitude = res.Latitude;
-                    _settings.Location.Longitude = res.Longitude;
-                    _settings.Location.Timezone = res.Timezone;
-                    _settings.Save();
-                    RecalculateAndRefreshUI();
-                    System.Windows.MessageBox.Show(
-                        (isAr ? "تم تحديد موقعك بنجاح:\n" : "Location detected successfully:\n") + res.Name,
-                        Title, MessageBoxButton.OK, MessageBoxImage.Information);
-                }
-                else
-                {
-                    System.Windows.MessageBox.Show(res.ErrorMessage, Title, MessageBoxButton.OK, MessageBoxImage.Warning);
-                }
-            };
-            actionStack.Children.Add(_quickDetectBtn);
 
             // Mute Button
             _muteBtn = CreateHeaderIconButton(_settings.IsMuted ? "🔇" : "🔊", isAr ? "كتم / إلغاء الكتم" : "Mute / Unmute", isDark);

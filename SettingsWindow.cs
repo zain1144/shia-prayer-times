@@ -47,7 +47,6 @@ namespace ShiaPrayerTimes
         private System.Windows.Controls.Slider _hijriSlider;
         private TextBlock _hijriLabel;
         private TextBlock _hijriPreviewLabel;
-        private TextBlock _detectStatusLabel;
 
         // Audio & System Controls
         private System.Windows.Controls.Slider _volSlider;
@@ -994,80 +993,6 @@ namespace ShiaPrayerTimes
                 }
             };
             panel.Children.Add(_presetCombo);
-
-            // -----------------------------------------------------------------
-            // Card 4: IP Geolocation (تخمين الموقع عبر مزود الخدمة - اختياري)
-            // -----------------------------------------------------------------
-            var autoLocBorder = new Border
-            {
-                Background = UIThemeHelper.GetBrush(isDark ? Color.FromRgb(15, 23, 42) : Color.FromRgb(248, 250, 252)),
-                BorderBrush = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkBorder : UIThemeHelper.LightBorder),
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(8),
-                Padding = new Thickness(14, 10, 14, 10),
-                Margin = new Thickness(0, 0, 0, 16)
-            };
-
-            var autoGrid = new Grid();
-            autoGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            autoGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-            var autoTextStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-            var autoTitle = UIThemeHelper.CreateLabel(isAr ? "📡 تخمين الموقع عبر مزود الإنترنت (IP):" : "📡 Estimate Location via ISP (IP Geolocation):", isDark, true, 13);
-            _detectStatusLabel = new TextBlock
-            {
-                Text = isAr ? "ملاحظة: هذا الخيار يعتمد على سيرفر مزود الإنترنت (وقد يظهر موقع السيرفر المركزي كالرياض أو جدة)." : "Note: IP lookup may point to your ISP's central server gateway rather than your local area.",
-                FontSize = 11.5,
-                Foreground = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkTextSecondary : UIThemeHelper.LightTextSecondary),
-                Margin = new Thickness(0, 2, 0, 0),
-                TextWrapping = TextWrapping.Wrap
-            };
-            autoTextStack.Children.Add(autoTitle);
-            autoTextStack.Children.Add(_detectStatusLabel);
-            Grid.SetColumn(autoTextStack, 0);
-            autoGrid.Children.Add(autoTextStack);
-
-            var detectBtn = new System.Windows.Controls.Button
-            {
-                Content = isAr ? "📡 تخمين عبر IP" : "📡 Lookup IP",
-                Height = 32,
-                Padding = new Thickness(14, 0, 14, 0),
-                Background = UIThemeHelper.GetBrush(isDark ? Color.FromRgb(51, 65, 85) : Color.FromRgb(226, 232, 240)),
-                Foreground = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkTextPrimary : UIThemeHelper.LightTextPrimary),
-                FontWeight = FontWeights.SemiBold,
-                BorderThickness = new Thickness(0),
-                Cursor = System.Windows.Input.Cursors.Hand,
-                FontSize = 12
-            };
-            detectBtn.Click += async (s, e) =>
-            {
-                detectBtn.IsEnabled = false;
-                _detectStatusLabel.Text = isAr ? "جاري الاستعلام عن عنوان الـ IP لمزود الخدمة..." : "Querying ISP gateway IP...";
-                _detectStatusLabel.Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentGold);
-
-                var result = await Task.Run(() => LocationDetector.DetectLocation());
-
-                detectBtn.IsEnabled = true;
-                if (result.Success)
-                {
-                    _locNameBox.Text = result.Name;
-                    _latBox.Text = result.Latitude.ToString("0.0000");
-                    _lonBox.Text = result.Longitude.ToString("0.0000");
-                    _tzBox.Text = result.Timezone.ToString("0.0");
-                    _detectStatusLabel.Text = (isAr ? "تم الاستعلام (موقع سيرفر الإنترنت): " : "ISP Server Location: ") + result.Name;
-                    _detectStatusLabel.Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentGold);
-                }
-                else
-                {
-                    _detectStatusLabel.Text = result.ErrorMessage;
-                    _detectStatusLabel.Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentRed);
-                }
-            };
-            Grid.SetColumn(detectBtn, 1);
-            autoGrid.Children.Add(detectBtn);
-
-            autoLocBorder.Child = autoGrid;
-            panel.Children.Add(autoLocBorder);
 
             // Coordinates Grid
             var grid = new Grid { Margin = new Thickness(0, 8, 0, 12) };
