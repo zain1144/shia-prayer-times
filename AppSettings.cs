@@ -116,6 +116,8 @@ namespace ShiaPrayerTimes
 
         public int NotificationDurationSeconds { get; set; } // 0 = persistent, 5, 10, 15, 30, 60
         public string NotificationStyle { get; set; }        // "CustomToast", "WindowsNative"
+        public string ToastPosition { get; set; }            // "BottomRight", "BottomLeft", "TopRight", "TopLeft", "TopCenter", "Center"
+        public string ToastSize { get; set; }                // "Small", "Medium", "Large", "Wide"
 
         public List<AdhanSound> AdhanLibrary { get; set; }
         public Dictionary<string, PrayerEventConfig> Prayers { get; set; }
@@ -130,6 +132,8 @@ namespace ShiaPrayerTimes
             MinimizeToTrayOnClose = true;
             NotificationDurationSeconds = 10;
             NotificationStyle = "CustomToast";
+            ToastPosition = "BottomRight";
+            ToastSize = "Medium";
 
             Location = new LocationPreset("القطيف - المملكة العربية السعودية (Qatif)", 26.5577, 50.0081, 3.0, 0);
 
@@ -349,6 +353,8 @@ namespace ShiaPrayerTimes
 
             if (NotificationDurationSeconds < 0) NotificationDurationSeconds = 10;
             if (string.IsNullOrEmpty(NotificationStyle)) NotificationStyle = "CustomToast";
+            if (string.IsNullOrEmpty(ToastPosition)) ToastPosition = "BottomRight";
+            if (string.IsNullOrEmpty(ToastSize)) ToastSize = "Medium";
 
             if (Prayers == null) Prayers = new Dictionary<string, PrayerEventConfig>(StringComparer.OrdinalIgnoreCase);
 
@@ -366,6 +372,13 @@ namespace ShiaPrayerTimes
                     var cfg = Prayers[n];
                     if (string.IsNullOrEmpty(cfg.ReminderSoundId)) cfg.ReminderSoundId = "chime";
                     if (cfg.CustomReminderAudioPath == null) cfg.CustomReminderAudioPath = "";
+
+                    // Auto-migrate any prayer previously set to "Toast" (which silenced audio) to "Adhan" for obligatory prayers
+                    if (string.Equals(cfg.NotificationMode, "Toast", StringComparison.OrdinalIgnoreCase) &&
+                        (n == "Fajr" || n == "Dhuhr" || n == "Asr" || n == "Maghrib" || n == "Isha"))
+                    {
+                        cfg.NotificationMode = "Adhan";
+                    }
                 }
             }
         }

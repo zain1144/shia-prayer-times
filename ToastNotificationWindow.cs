@@ -23,8 +23,15 @@ namespace ShiaPrayerTimes
         private double _maxBarWidth = 356;
         private bool _isClosing = false;
         private Action _onClickAction;
+        private string _position = "BottomRight";
+        private string _size = "Medium";
 
         public static void ShowToast(string title, string message, int durationSeconds, bool isDark, bool isAr, string iconSymbol = "🕌", Action onClick = null)
+        {
+            ShowToast(title, message, durationSeconds, isDark, isAr, iconSymbol, "BottomRight", "Medium", onClick);
+        }
+
+        public static void ShowToast(string title, string message, int durationSeconds, bool isDark, bool isAr, string iconSymbol, string position, string size, Action onClick = null)
         {
             try
             {
@@ -38,7 +45,7 @@ namespace ShiaPrayerTimes
                         _activeToast = null;
                     }
 
-                    var toast = new ToastNotificationWindow(title, message, durationSeconds, isDark, isAr, iconSymbol, onClick);
+                    var toast = new ToastNotificationWindow(title, message, durationSeconds, isDark, isAr, iconSymbol, position, size, onClick);
                     _activeToast = toast;
                     toast.Show();
                 }));
@@ -50,9 +57,59 @@ namespace ShiaPrayerTimes
         }
 
         public ToastNotificationWindow(string title, string message, int durationSeconds, bool isDark, bool isAr, string iconSymbol, Action onClick)
+            : this(title, message, durationSeconds, isDark, isAr, iconSymbol, "BottomRight", "Medium", onClick)
+        {
+        }
+
+        public ToastNotificationWindow(string title, string message, int durationSeconds, bool isDark, bool isAr, string iconSymbol, string position, string size, Action onClick)
         {
             _onClickAction = onClick;
+            _position = string.IsNullOrEmpty(position) ? "BottomRight" : position;
+            _size = string.IsNullOrEmpty(size) ? "Medium" : size;
             _duration = TimeSpan.FromSeconds(Math.Max(0, durationSeconds));
+
+            // Dimension and scale metrics based on size
+            double targetWidth = 380;
+            double iconBoxSize = 40;
+            double iconFontSize = 20;
+            double titleFontSize = 13.5;
+            double bodyFontSize = 12;
+            double closeBtnSize = 24;
+            Thickness contentPad = new Thickness(12, 10, 12, 10);
+
+            if (_size.Equals("Small", StringComparison.OrdinalIgnoreCase))
+            {
+                targetWidth = 310;
+                iconBoxSize = 34;
+                iconFontSize = 17;
+                titleFontSize = 12;
+                bodyFontSize = 11;
+                closeBtnSize = 22;
+                contentPad = new Thickness(10, 8, 10, 8);
+            }
+            else if (_size.Equals("Large", StringComparison.OrdinalIgnoreCase))
+            {
+                targetWidth = 460;
+                iconBoxSize = 46;
+                iconFontSize = 23;
+                titleFontSize = 15;
+                bodyFontSize = 13;
+                closeBtnSize = 26;
+                contentPad = new Thickness(14, 12, 14, 12);
+            }
+            else if (_size.Equals("Wide", StringComparison.OrdinalIgnoreCase))
+            {
+                targetWidth = 540;
+                iconBoxSize = 50;
+                iconFontSize = 25;
+                titleFontSize = 16;
+                bodyFontSize = 13.5;
+                closeBtnSize = 28;
+                contentPad = new Thickness(16, 13, 16, 13);
+            }
+
+            Width = targetWidth;
+            _maxBarWidth = targetWidth - 24; // 12 margin on left, 12 on right
 
             WindowStyle = WindowStyle.None;
             AllowsTransparency = true;
@@ -61,12 +118,11 @@ namespace ShiaPrayerTimes
             ShowInTaskbar = false;
             ShowActivated = false;
             Focusable = false;
-            Width = 380;
             SizeToContent = SizeToContent.Height;
             FlowDirection = isAr ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
             Opacity = 1;
 
-            // Outer Container with Drop Shadow
+            // Outer Container with Drop Shadow and Drag Support
             var outerBorder = new Border
             {
                 Margin = new Thickness(12),
@@ -84,12 +140,21 @@ namespace ShiaPrayerTimes
                 }
             };
 
+            // Allow dragging toast to any custom position
+            outerBorder.MouseLeftButtonDown += (s, e) =>
+            {
+                if (e.ButtonState == MouseButtonState.Pressed)
+                {
+                    try { DragMove(); } catch { }
+                }
+            };
+
             var mainGrid = new Grid();
             mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
             mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Progress bar
 
             // Content Grid
-            var contentGrid = new Grid { Margin = new Thickness(12, 10, 12, 10), Cursor = Cursors.Hand };
+            var contentGrid = new Grid { Margin = contentPad, Cursor = Cursors.Hand };
             contentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // Icon
             contentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }); // Texts
             contentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // Close Button
@@ -103,8 +168,8 @@ namespace ShiaPrayerTimes
             // 1. Icon Badge
             var iconBorder = new Border
             {
-                Width = 40,
-                Height = 40,
+                Width = iconBoxSize,
+                Height = iconBoxSize,
                 CornerRadius = new CornerRadius(10),
                 Background = UIThemeHelper.GetBrush(isDark ? Color.FromRgb(6, 78, 59) : Color.FromRgb(209, 250, 229)),
                 VerticalAlignment = VerticalAlignment.Center,
@@ -113,7 +178,7 @@ namespace ShiaPrayerTimes
             var iconBlock = new TextBlock
             {
                 Text = string.IsNullOrEmpty(iconSymbol) ? "🕌" : iconSymbol,
-                FontSize = 20,
+                FontSize = iconFontSize,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
             };
@@ -126,7 +191,7 @@ namespace ShiaPrayerTimes
             var titleBlock = new TextBlock
             {
                 Text = title,
-                FontSize = 13.5,
+                FontSize = titleFontSize,
                 FontWeight = FontWeights.Bold,
                 Foreground = UIThemeHelper.GetBrush(isDark ? Color.FromRgb(248, 250, 252) : Color.FromRgb(15, 23, 42)),
                 TextTrimming = TextTrimming.CharacterEllipsis
@@ -134,11 +199,11 @@ namespace ShiaPrayerTimes
             var bodyBlock = new TextBlock
             {
                 Text = message,
-                FontSize = 12,
+                FontSize = bodyFontSize,
                 Margin = new Thickness(0, 3, 0, 0),
                 Foreground = UIThemeHelper.GetBrush(isDark ? Color.FromRgb(203, 213, 225) : Color.FromRgb(71, 85, 105)),
                 TextWrapping = TextWrapping.Wrap,
-                LineHeight = 18
+                LineHeight = bodyFontSize * 1.45
             };
             textStack.Children.Add(titleBlock);
             textStack.Children.Add(bodyBlock);
@@ -148,14 +213,15 @@ namespace ShiaPrayerTimes
             // 3. Close Button
             var closeBtn = new Border
             {
-                Width = 24,
-                Height = 24,
-                CornerRadius = new CornerRadius(12),
+                Width = closeBtnSize,
+                Height = closeBtnSize,
+                CornerRadius = new CornerRadius(closeBtnSize / 2),
                 Background = Brushes.Transparent,
                 VerticalAlignment = VerticalAlignment.Top,
                 Cursor = Cursors.Hand,
                 ToolTip = isAr ? "إغلاق" : "Dismiss"
             };
+            closeBtn.MouseLeftButtonDown += (s, e) => { e.Handled = true; }; // Prevent DragMove on close button
             var closeTxt = new TextBlock
             {
                 Text = "✕",
@@ -232,7 +298,8 @@ namespace ShiaPrayerTimes
 
             Loaded += (s, e) =>
             {
-                PositionWindow();
+                UpdateLayout();
+                PositionWindow(_position);
                 AnimateFadeIn();
 
                 if (durationSeconds > 0)
@@ -262,11 +329,43 @@ namespace ShiaPrayerTimes
             };
         }
 
-        private void PositionWindow()
+        private void PositionWindow(string position)
         {
             var workArea = SystemParameters.WorkArea;
-            Left = workArea.Right - ActualWidth - 8;
-            Top = workArea.Bottom - ActualHeight - 8;
+            double w = ActualWidth > 0 ? ActualWidth : Width;
+            double h = ActualHeight > 0 ? ActualHeight : 100;
+            double margin = 12.0;
+
+            string pos = string.IsNullOrEmpty(position) ? "BottomRight" : position;
+
+            switch (pos)
+            {
+                case "BottomLeft":
+                    Left = workArea.Left + margin;
+                    Top = workArea.Bottom - h - margin;
+                    break;
+                case "TopRight":
+                    Left = workArea.Right - w - margin;
+                    Top = workArea.Top + margin;
+                    break;
+                case "TopLeft":
+                    Left = workArea.Left + margin;
+                    Top = workArea.Top + margin;
+                    break;
+                case "TopCenter":
+                    Left = workArea.Left + (workArea.Width - w) / 2.0;
+                    Top = workArea.Top + margin;
+                    break;
+                case "Center":
+                    Left = workArea.Left + (workArea.Width - w) / 2.0;
+                    Top = workArea.Top + (workArea.Height - h) / 2.0;
+                    break;
+                case "BottomRight":
+                default:
+                    Left = workArea.Right - w - margin;
+                    Top = workArea.Bottom - h - margin;
+                    break;
+            }
         }
 
         private void AnimateFadeIn()

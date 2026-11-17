@@ -1002,9 +1002,9 @@ namespace ShiaPrayerTimes
                 DateTime pTime = timesDict[ev];
                 string todayStr = now.ToString("yyyyMMdd");
 
-                // 1. Check exact prayer time
-                double diffSec = Math.Abs((now - pTime).TotalSeconds);
-                if (diffSec <= 30)
+                // 1. Check exact prayer time (Must never fire before prayer time arrives)
+                double secPast = (now - pTime).TotalSeconds;
+                if (secPast >= 0 && secPast <= 45)
                 {
                     string alertKey = "PRAYER_" + ev + "_" + todayStr;
                     if (!_firedAlerts.Contains(alertKey))
@@ -1015,12 +1015,12 @@ namespace ShiaPrayerTimes
                     }
                 }
 
-                // 2. Check pre-prayer reminder
+                // 2. Check pre-prayer reminder (Must never fire before reminder time arrives)
                 if (cfg.ReminderMinutes > 0)
                 {
                     DateTime reminderTime = pTime.AddMinutes(-cfg.ReminderMinutes);
-                    double remDiffSec = Math.Abs((now - reminderTime).TotalSeconds);
-                    if (remDiffSec <= 30)
+                    double remSecPast = (now - reminderTime).TotalSeconds;
+                    if (remSecPast >= 0 && remSecPast <= 45)
                     {
                         string remKey = "REM_" + ev + "_" + todayStr;
                         if (!_firedAlerts.Contains(remKey))

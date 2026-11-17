@@ -60,6 +60,8 @@ namespace ShiaPrayerTimes
         private System.Windows.Controls.ComboBox _langCombo;
         private System.Windows.Controls.ComboBox _notifStyleCombo;
         private System.Windows.Controls.ComboBox _notifDurationCombo;
+        private System.Windows.Controls.ComboBox _toastPositionCombo;
+        private System.Windows.Controls.ComboBox _toastSizeCombo;
 
         public SettingsWindow(AppSettings settings, AudioNotifier audioNotifier, Action onSettingsSaved)
         {
@@ -218,7 +220,7 @@ namespace ShiaPrayerTimes
             headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(145) }); // Col 0: Event
             headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(65) });  // Col 1: Show
             headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(135) }); // Col 2: Offset
-            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(155) }); // Col 3: Alert Mode
+            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(175) }); // Col 3: Alert Mode
             headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(260) }); // Col 4: Adhan Sound & Test
             headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(125) }); // Col 5: Reminder Time
             headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 200 }); // Col 6: Reminder Sound
@@ -260,7 +262,7 @@ namespace ShiaPrayerTimes
                 rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(145) });
                 rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(65) });
                 rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(135) });
-                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(155) });
+                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(175) });
                 rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(260) });
                 rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(125) });
                 rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 200 });
@@ -327,16 +329,16 @@ namespace ShiaPrayerTimes
                 // Notification Mode
                 var notifCombo = new System.Windows.Controls.ComboBox
                 {
-                    Width = 145,
+                    Width = 165,
                     Height = 30,
                     VerticalAlignment = VerticalAlignment.Center,
                     HorizontalAlignment = System.Windows.HorizontalAlignment.Left
                 };
                 UIThemeHelper.StyleComboBox(notifCombo, isDark);
-                notifCombo.Items.Add(new ComboBoxItem { Content = isAr ? "أذان كامل (Adhan)" : "Full Adhan Audio", Tag = "Adhan" });
-                notifCombo.Items.Add(new ComboBoxItem { Content = isAr ? "نغمة تنبيه (Chime)" : "Short Chime / Beep", Tag = "Chime" });
-                notifCombo.Items.Add(new ComboBoxItem { Content = isAr ? "إشعار مرئي فقط" : "Visual Toast Only", Tag = "Toast" });
-                notifCombo.Items.Add(new ComboBoxItem { Content = isAr ? "صامت (إيقاف)" : "Silent (Off)", Tag = "Off" });
+                notifCombo.Items.Add(new ComboBoxItem { Content = isAr ? "🔔 أذان كامل + إشعار" : "🔔 Full Adhan & Toast", Tag = "Adhan" });
+                notifCombo.Items.Add(new ComboBoxItem { Content = isAr ? "🎵 نغمة تنبيه + إشعار" : "🎵 Chime Alert & Toast", Tag = "Chime" });
+                notifCombo.Items.Add(new ComboBoxItem { Content = isAr ? "👁️ إشعار مرئي فقط (بدون صوت)" : "👁️ Visual Toast (Silent)", Tag = "Toast" });
+                notifCombo.Items.Add(new ComboBoxItem { Content = isAr ? "⏹ معطل (إيقاف)" : "⏹ Disabled (Off)", Tag = "Off" });
 
                 string mode = cfg.NotificationMode ?? "Adhan";
                 int selNotifIdx = 0;
@@ -1369,11 +1371,21 @@ namespace ShiaPrayerTimes
                     var selDur = _notifDurationCombo.SelectedItem as ComboBoxItem;
                     if (selDur != null) _settings.NotificationDurationSeconds = (int)selDur.Tag;
                 }
+                if (_toastPositionCombo != null)
+                {
+                    var selPos = _toastPositionCombo.SelectedItem as ComboBoxItem;
+                    if (selPos != null) _settings.ToastPosition = selPos.Tag as string;
+                }
+                if (_toastSizeCombo != null)
+                {
+                    var selSz = _toastSizeCombo.SelectedItem as ComboBoxItem;
+                    if (selSz != null) _settings.ToastSize = selSz.Tag as string;
+                }
             };
 
             var btnVisual = new System.Windows.Controls.Button
             {
-                Content = isAr ? "👁️ إشعار مرئي فقط (Visual Toast)" : "👁️ Visual Toast Only",
+                Content = isAr ? "👁️ إشعار مرئي فقط (بدون صوت)" : "👁️ Visual Toast (Silent)",
                 Padding = new Thickness(14, 8, 14, 8),
                 Margin = new Thickness(0, 0, 8, 8),
                 Background = UIThemeHelper.GetBrush(Color.FromRgb(2, 132, 199)),
@@ -1387,7 +1399,7 @@ namespace ShiaPrayerTimes
             {
                 syncNotifParams();
                 _audioNotifier.TestVisualNotification(isAr ? "الظهر" : "Dhuhr", "Dhuhr", isAr ? "12:00 م" : "12:00 PM");
-                testStatusLabel.Text = isAr ? "✓ تم إرسال إشعار مرئي فقط إلى زاوية الشاشة بنجاح!" : "✓ Visual toast notification sent successfully!";
+                testStatusLabel.Text = isAr ? "✓ تم إرسال إشعار مرئي فقط بنجاح!" : "✓ Visual toast notification sent successfully!";
                 testStatusLabel.Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentEmerald);
             };
             testBtnWrap.Children.Add(btnVisual);
@@ -1395,7 +1407,7 @@ namespace ShiaPrayerTimes
             // 2. Chime
             var btnChime = new System.Windows.Controls.Button
             {
-                Content = isAr ? "🎵 نغمة تنبيه (Chime Alert)" : "🎵 Chime Alert",
+                Content = isAr ? "🎵 نغمة تنبيه + إشعار" : "🎵 Chime Alert & Toast",
                 Padding = new Thickness(14, 8, 14, 8),
                 Margin = new Thickness(0, 0, 8, 8),
                 Background = UIThemeHelper.GetBrush(Color.FromRgb(217, 119, 6)),
@@ -1417,7 +1429,7 @@ namespace ShiaPrayerTimes
             // 3. Adhan
             var btnAdhan = new System.Windows.Controls.Button
             {
-                Content = isAr ? "📢 أذان كامل (Full Adhan)" : "📢 Full Adhan Audio",
+                Content = isAr ? "📢 أذان كامل + إشعار" : "📢 Full Adhan & Toast",
                 Padding = new Thickness(14, 8, 14, 8),
                 Margin = new Thickness(0, 0, 8, 8),
                 Background = UIThemeHelper.GetBrush(UIThemeHelper.AccentEmerald),
@@ -1430,7 +1442,8 @@ namespace ShiaPrayerTimes
             btnAdhan.Click += (s, e) =>
             {
                 syncNotifParams();
-                _audioNotifier.TestAdhanNotification("Dhuhr", isAr ? "الظهر" : "Dhuhr", isAr ? "12:00 م" : "12:00 PM", "default");
+                string testSoundId = _settings.Prayers.ContainsKey("Dhuhr") ? _settings.Prayers["Dhuhr"].SoundId : "default";
+                _audioNotifier.TestAdhanNotification("Dhuhr", isAr ? "الظهر" : "Dhuhr", isAr ? "12:00 م" : "12:00 PM", testSoundId);
                 testStatusLabel.Text = isAr ? "✓ جاري تشغيل الأذان وإرسال إشعار الصلاة! (يمكنك إيقافه بالزر الأحمر)" : "✓ Playing Adhan and notification banner! (You can stop it with the red button)";
                 testStatusLabel.Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentEmerald);
             };
@@ -1462,10 +1475,13 @@ namespace ShiaPrayerTimes
             testCardStack.Children.Add(testStatusLabel);
 
             // Notification Customization inside Test Card
-            var notifOptionsGrid = new Grid { Margin = new Thickness(0, 10, 0, 4) };
+            var notifOptionsGrid = new Grid { Margin = new Thickness(0, 12, 0, 4) };
             notifOptionsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             notifOptionsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            notifOptionsGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            notifOptionsGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
+            // Row 0, Col 0: Visual Style
             var nStyleStack = new StackPanel { Margin = new Thickness(0, 0, 10, 0) };
             nStyleStack.Children.Add(UIThemeHelper.CreateLabel(isAr ? "نوع وشكل الإشعار المرئي:" : "Notification Visual Style:", isDark, false, 12));
             _notifStyleCombo = new System.Windows.Controls.ComboBox { Height = 32, Margin = new Thickness(0, 4, 0, 0) };
@@ -1474,9 +1490,11 @@ namespace ShiaPrayerTimes
             _notifStyleCombo.Items.Add(new ComboBoxItem { Content = isAr ? "إشعار نظام ويندوز الافتراضي (Windows Native)" : "Windows Default Notification", Tag = "WindowsNative" });
             _notifStyleCombo.SelectedIndex = (_settings.NotificationStyle == "WindowsNative") ? 1 : 0;
             nStyleStack.Children.Add(_notifStyleCombo);
+            Grid.SetRow(nStyleStack, 0);
             Grid.SetColumn(nStyleStack, 0);
             notifOptionsGrid.Children.Add(nStyleStack);
 
+            // Row 0, Col 1: Duration
             var nDurStack = new StackPanel { Margin = new Thickness(10, 0, 0, 0) };
             nDurStack.Children.Add(UIThemeHelper.CreateLabel(isAr ? "مدة بقاء الإشعار على الشاشة:" : "Display Duration Before Dismissal:", isDark, false, 12));
             _notifDurationCombo = new System.Windows.Controls.ComboBox { Height = 32, Margin = new Thickness(0, 4, 0, 0) };
@@ -1502,8 +1520,65 @@ namespace ShiaPrayerTimes
             }
             _notifDurationCombo.SelectedIndex = durIdx;
             nDurStack.Children.Add(_notifDurationCombo);
+            Grid.SetRow(nDurStack, 0);
             Grid.SetColumn(nDurStack, 1);
             notifOptionsGrid.Children.Add(nDurStack);
+
+            // Row 1, Col 0: Toast Position
+            var nPosStack = new StackPanel { Margin = new Thickness(0, 10, 10, 0) };
+            nPosStack.Children.Add(UIThemeHelper.CreateLabel(isAr ? "موضع ظهور الإشعار العائم على الشاشة:" : "Floating Toast Screen Position:", isDark, false, 12));
+            _toastPositionCombo = new System.Windows.Controls.ComboBox { Height = 32, Margin = new Thickness(0, 4, 0, 0) };
+            UIThemeHelper.StyleComboBox(_toastPositionCombo, isDark);
+            _toastPositionCombo.Items.Add(new ComboBoxItem { Content = isAr ? "أسفل اليمين (الافتراضي)" : "Bottom-Right (Default)", Tag = "BottomRight" });
+            _toastPositionCombo.Items.Add(new ComboBoxItem { Content = isAr ? "أسفل اليسار" : "Bottom-Left", Tag = "BottomLeft" });
+            _toastPositionCombo.Items.Add(new ComboBoxItem { Content = isAr ? "أعلى اليمين" : "Top-Right", Tag = "TopRight" });
+            _toastPositionCombo.Items.Add(new ComboBoxItem { Content = isAr ? "أعلى اليسار" : "Top-Left", Tag = "TopLeft" });
+            _toastPositionCombo.Items.Add(new ComboBoxItem { Content = isAr ? "أعلى الوسط (شريط علوي)" : "Top-Center (Top Banner)", Tag = "TopCenter" });
+            _toastPositionCombo.Items.Add(new ComboBoxItem { Content = isAr ? "وسط الشاشة (تنبيه مركزي)" : "Screen Center (Center)", Tag = "Center" });
+
+            string curPos = _settings.ToastPosition ?? "BottomRight";
+            int posIdx = 0;
+            for (int pi = 0; pi < _toastPositionCombo.Items.Count; pi++)
+            {
+                var ci = _toastPositionCombo.Items[pi] as ComboBoxItem;
+                if (ci != null && string.Equals(ci.Tag as string, curPos, StringComparison.OrdinalIgnoreCase))
+                {
+                    posIdx = pi;
+                    break;
+                }
+            }
+            _toastPositionCombo.SelectedIndex = posIdx;
+            nPosStack.Children.Add(_toastPositionCombo);
+            Grid.SetRow(nPosStack, 1);
+            Grid.SetColumn(nPosStack, 0);
+            notifOptionsGrid.Children.Add(nPosStack);
+
+            // Row 1, Col 1: Toast Size
+            var nSizeStack = new StackPanel { Margin = new Thickness(10, 10, 0, 0) };
+            nSizeStack.Children.Add(UIThemeHelper.CreateLabel(isAr ? "حجم الإشعار العائم:" : "Floating Toast Size:", isDark, false, 12));
+            _toastSizeCombo = new System.Windows.Controls.ComboBox { Height = 32, Margin = new Thickness(0, 4, 0, 0) };
+            UIThemeHelper.StyleComboBox(_toastSizeCombo, isDark);
+            _toastSizeCombo.Items.Add(new ComboBoxItem { Content = isAr ? "صغير ومدمج (Small - 310px)" : "Small & Compact (310px)", Tag = "Small" });
+            _toastSizeCombo.Items.Add(new ComboBoxItem { Content = isAr ? "متوسط (Medium - 380px - الافتراضي)" : "Medium (380px - Default)", Tag = "Medium" });
+            _toastSizeCombo.Items.Add(new ComboBoxItem { Content = isAr ? "كبير وواضح (Large - 460px)" : "Large & Clear (460px)", Tag = "Large" });
+            _toastSizeCombo.Items.Add(new ComboBoxItem { Content = isAr ? "عريض وبارز (Wide - 540px)" : "Wide & Prominent (540px)", Tag = "Wide" });
+
+            string curSz = _settings.ToastSize ?? "Medium";
+            int szIdx = 1;
+            for (int si = 0; si < _toastSizeCombo.Items.Count; si++)
+            {
+                var ci = _toastSizeCombo.Items[si] as ComboBoxItem;
+                if (ci != null && string.Equals(ci.Tag as string, curSz, StringComparison.OrdinalIgnoreCase))
+                {
+                    szIdx = si;
+                    break;
+                }
+            }
+            _toastSizeCombo.SelectedIndex = szIdx;
+            nSizeStack.Children.Add(_toastSizeCombo);
+            Grid.SetRow(nSizeStack, 1);
+            Grid.SetColumn(nSizeStack, 1);
+            notifOptionsGrid.Children.Add(nSizeStack);
 
             testCardStack.Children.Add(notifOptionsGrid);
 
@@ -1936,6 +2011,18 @@ namespace ShiaPrayerTimes
             {
                 var selDur = _notifDurationCombo.SelectedItem as ComboBoxItem;
                 _settings.NotificationDurationSeconds = selDur != null ? (int)selDur.Tag : 10;
+            }
+
+            if (_toastPositionCombo != null)
+            {
+                var selPos = _toastPositionCombo.SelectedItem as ComboBoxItem;
+                _settings.ToastPosition = selPos != null ? (selPos.Tag as string) : "BottomRight";
+            }
+
+            if (_toastSizeCombo != null)
+            {
+                var selSz = _toastSizeCombo.SelectedItem as ComboBoxItem;
+                _settings.ToastSize = selSz != null ? (selSz.Tag as string) : "Medium";
             }
 
             _settings.Save();

@@ -135,6 +135,7 @@ namespace ShiaPrayerTimes
                 if (!File.Exists(filePath)) return;
 
                 _player.Stop();
+                _player.Close();
                 _player.Open(new Uri(filePath, UriKind.Absolute));
                 UpdateVolume();
                 _player.Play();
@@ -199,6 +200,8 @@ namespace ShiaPrayerTimes
             bool isAr = _settings.Language == "ar";
             int duration = _settings.NotificationDurationSeconds;
             string style = _settings.NotificationStyle ?? "CustomToast";
+            string position = _settings.ToastPosition ?? "BottomRight";
+            string size = _settings.ToastSize ?? "Medium";
 
             if (style.Equals("WindowsNative", StringComparison.OrdinalIgnoreCase))
             {
@@ -210,7 +213,7 @@ namespace ShiaPrayerTimes
             }
             else
             {
-                ToastNotificationWindow.ShowToast(title, body, duration, isDark, isAr, iconSymbol, () =>
+                ToastNotificationWindow.ShowToast(title, body, duration, isDark, isAr, iconSymbol, position, size, () =>
                 {
                     try
                     {
