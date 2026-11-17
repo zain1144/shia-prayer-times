@@ -594,7 +594,7 @@ namespace ShiaPrayerTimes
 
             _nextPrayerTitleText = new TextBlock
             {
-                Text = isAr ? "الصلاة القادمة: ..." : "Next Prayer: ...",
+                Text = isAr ? "الموعد القادم: ..." : "Next: ...",
                 FontSize = 24,
                 FontWeight = FontWeights.Bold,
                 Foreground = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkTextPrimary : UIThemeHelper.LightTextPrimary)
@@ -919,7 +919,15 @@ namespace ShiaPrayerTimes
                 _countdownText.Text = countdownStr;
 
                 string pNameAr = namesAr.ContainsKey(nextPrayerName) ? namesAr[nextPrayerName] : nextPrayerName;
-                _nextPrayerTitleText.Text = isAr ? string.Format("الصلاة القادمة: {0}", pNameAr) : string.Format("Next Prayer: {0}", nextPrayerName);
+                bool isActualPrayer = PrayerCalculator.IsActualPrayer(nextPrayerName);
+                if (isActualPrayer)
+                {
+                    _nextPrayerTitleText.Text = isAr ? string.Format("الصلاة القادمة: {0}", pNameAr) : string.Format("Next Prayer: {0}", nextPrayerName);
+                }
+                else
+                {
+                    _nextPrayerTitleText.Text = isAr ? string.Format("الموعد القادم: {0}", pNameAr) : string.Format("Next Event: {0}", nextPrayerName);
+                }
 
                 string formattedTime = _settings.TimeFormat24H ? nextPrayerTime.ToString("HH:mm:ss") : nextPrayerTime.ToString("hh:mm:ss tt");
                 _nextPrayerTimeText.Text = formattedTime;

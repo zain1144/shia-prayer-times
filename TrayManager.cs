@@ -75,7 +75,7 @@ namespace ShiaPrayerTimes
             var menu = new ContextMenuStrip();
             bool isAr = _settings.Language == "ar";
 
-            _nextPrayerMenuItem = new ToolStripMenuItem(isAr ? "الصلاة القادمة: ..." : "Next Prayer: ...");
+            _nextPrayerMenuItem = new ToolStripMenuItem(isAr ? "الموعد القادم: ..." : "Next: ...");
             _nextPrayerMenuItem.Font = new Font(_nextPrayerMenuItem.Font, System.Drawing.FontStyle.Bold);
             _nextPrayerMenuItem.Enabled = false;
             menu.Items.Add(_nextPrayerMenuItem);
@@ -140,9 +140,10 @@ namespace ShiaPrayerTimes
             {
                 bool isAr = _settings.Language == "ar";
                 string pName = isAr ? prayerNameAr : prayerNameEn;
-                string text = isAr ?
-                    string.Format("الصلاة القادمة: {0} ({1})", pName, countdownStr) :
-                    string.Format("Next: {0} in {1}", pName, countdownStr);
+                bool isActualPrayer = PrayerCalculator.IsActualPrayer(prayerNameEn);
+                string text = isActualPrayer
+                    ? (isAr ? string.Format("الصلاة القادمة: {0} ({1})", pName, countdownStr) : string.Format("Next Prayer: {0} in {1}", pName, countdownStr))
+                    : (isAr ? string.Format("الموعد القادم: {0} ({1})", pName, countdownStr) : string.Format("Next Event: {0} in {1}", pName, countdownStr));
 
                 if (_nextPrayerMenuItem != null)
                 {

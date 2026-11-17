@@ -27,8 +27,8 @@ namespace ShiaPrayerTimes
 
     public class CalculationParameters
     {
-        public CalculationMethod Method = CalculationMethod.Jafari;
-        public double FajrAngle = 16.0;
+        public CalculationMethod Method = CalculationMethod.Tubalani;
+        public double FajrAngle = 18.0;
         public double MaghribAngle = 4.0;
         public double IshaAngle = 14.0;
         public MidnightMode Midnight = MidnightMode.Jafari;
@@ -121,8 +121,20 @@ namespace ShiaPrayerTimes
                 { "isha", 18.0 / 24.0 }
             };
 
-            // 1 iteration refinement as in PrayTimes.js
-            times = ComputePrayerTimes(times, jDate, latitude, elevationMeters, parameters);
+            // 2 iterations refinement to ensure second-level astronomical accuracy across equinoxes
+            for (int iter = 0; iter < 2; iter++)
+            {
+                times = ComputePrayerTimes(times, jDate, latitude, elevationMeters, parameters);
+                if (iter == 0)
+                {
+                    var dayPortions = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var k in times.Keys)
+                    {
+                        dayPortions[k] = times[k] / 24.0;
+                    }
+                    times = dayPortions;
+                }
+            }
 
             // Adjust times with timezone and longitude
             var keys = new List<string>(times.Keys);
@@ -305,11 +317,25 @@ namespace ShiaPrayerTimes
 
         public static DateTime HoursToDateTime(DateTime baseDate, double hourFloat)
         {
+            // If hourFloat is near or past 24.0 (accounting for rounding to nearest minute),
+            // advance baseDate by 1 day so that midnight occurring after 12:00 AM has the correct next-day date.
+            if (hourFloat + 0.5 / 60.0 >= 24.0)
+            {
+                baseDate = baseDate.AddDays(1);
+            }
+
             // add 0.5 / 60 minute for nearest minute rounding
             hourFloat = FixHour(hourFloat + 0.5 / 60.0);
             int hours = (int)Math.Floor(hourFloat);
             int minutes = (int)Math.Floor((hourFloat - hours) * 60.0);
             return new DateTime(baseDate.Year, baseDate.Month, baseDate.Day, hours % 24, minutes % 60, 0);
+        }
+
+        public static bool IsActualPrayer(string eventKey)
+        {
+            if (string.IsNullOrEmpty(eventKey)) return false;
+            string k = eventKey.Trim().ToLowerInvariant();
+            return k == "fajr" || k == "dhuhr" || k == "asr" || k == "maghrib" || k == "isha";
         }
 
         public static double TimeDiff(double time1, double time2)

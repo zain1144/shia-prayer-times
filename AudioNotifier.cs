@@ -239,12 +239,26 @@ namespace ShiaPrayerTimes
         {
             if (mode == "Off") return;
 
-            string title = _settings.Language == "ar" ? "حان الآن موعد الصلاة" : "Prayer Time";
-            string body = _settings.Language == "ar"
-                ? string.Format("حان الآن موعد صلاة {0} ({1})", prayerNameAr, timeStr)
-                : string.Format("It is now time for {0} ({1})", prayerNameEn, timeStr);
+            bool isPrayer = PrayerCalculator.IsActualPrayer(prayerNameEn);
+            string title = _settings.Language == "ar"
+                ? (isPrayer ? "حان الآن موعد الصلاة" : "حان الآن الموعد")
+                : (isPrayer ? "Prayer Time" : "Scheduled Time");
 
-            ShowNotification(title, body, "🕌");
+            string body;
+            if (_settings.Language == "ar")
+            {
+                body = isPrayer
+                    ? string.Format("حان الآن موعد صلاة {0} ({1})", prayerNameAr, timeStr)
+                    : string.Format("حان الآن موعد {0} ({1})", prayerNameAr, timeStr);
+            }
+            else
+            {
+                body = isPrayer
+                    ? string.Format("It is now time for {0} Prayer ({1})", prayerNameEn, timeStr)
+                    : string.Format("It is now time for {0} ({1})", prayerNameEn, timeStr);
+            }
+
+            ShowNotification(title, body, isPrayer ? "🕌" : "⏰");
 
             if (mode == "Chime")
             {
@@ -258,12 +272,26 @@ namespace ShiaPrayerTimes
 
         public void TriggerReminderNotification(string prayerNameAr, string prayerNameEn, int minutesBefore, string reminderSoundId = "chime", string customPath = "")
         {
-            string title = _settings.Language == "ar" ? "تذكير باقتراب الصلاة" : "Prayer Reminder";
-            string body = _settings.Language == "ar"
-                ? string.Format("اقترب موعد صلاة {0} بعد {1} دقيقة", prayerNameAr, minutesBefore)
-                : string.Format("{0} prayer will be in {1} minutes", prayerNameEn, minutesBefore);
+            bool isPrayer = PrayerCalculator.IsActualPrayer(prayerNameEn);
+            string title = _settings.Language == "ar"
+                ? (isPrayer ? "تذكير باقتراب الصلاة" : "تذكير باقتراب الموعد")
+                : (isPrayer ? "Prayer Reminder" : "Time Reminder");
 
-            ShowNotification(title, body, "⏰");
+            string body;
+            if (_settings.Language == "ar")
+            {
+                body = isPrayer
+                    ? string.Format("اقترب موعد صلاة {0} بعد {1} دقيقة", prayerNameAr, minutesBefore)
+                    : string.Format("اقترب موعد {0} بعد {1} دقيقة", prayerNameAr, minutesBefore);
+            }
+            else
+            {
+                body = isPrayer
+                    ? string.Format("{0} prayer will be in {1} minutes", prayerNameEn, minutesBefore)
+                    : string.Format("{0} will be in {1} minutes", prayerNameEn, minutesBefore);
+            }
+
+            ShowNotification(title, body, "⏳");
 
             if (reminderSoundId != "silent" && reminderSoundId != "off" && reminderSoundId != "Off")
             {

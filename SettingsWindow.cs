@@ -425,7 +425,7 @@ namespace ShiaPrayerTimes
                         {
                             _audioNotifier.NotifyIcon.ShowBalloonTip(4000,
                                 isAr ? "تنبيه معطل" : "Alert Disabled",
-                                isAr ? ("تنبيه صلاة " + pNameAr + " مضبوط على (إيقاف) حالياً.") : ("Alert for " + evKey + " is set to (Off)."),
+                                isAr ? (string.Format("تنبيه {0}{1} مضبوط على (إيقاف) حالياً.", (PrayerCalculator.IsActualPrayer(evKey) ? "صلاة " : ""), pNameAr)) : ("Alert for " + evKey + " is set to (Off)."),
                                 ToolTipIcon.Warning);
                         }
                     }

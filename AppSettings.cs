@@ -360,6 +360,7 @@ namespace ShiaPrayerTimes
             if (string.IsNullOrEmpty(ToastPosition)) ToastPosition = "BottomRight";
             if (ToastPosition == "Custom" && (CustomToastLeft < 0 || CustomToastTop < 0)) ToastPosition = "BottomRight";
             if (string.IsNullOrEmpty(ToastSize)) ToastSize = "Medium";
+            if (string.IsNullOrEmpty(CalculationMethodName)) CalculationMethodName = "Tubalani";
 
             if (Prayers == null) Prayers = new Dictionary<string, PrayerEventConfig>(StringComparer.OrdinalIgnoreCase);
 
@@ -437,8 +438,8 @@ namespace ShiaPrayerTimes
 
         public CalculationParameters ToCalculationParameters()
         {
-            CalculationMethod method = CalculationMethod.Jafari;
-            if (CalculationMethodName == "Tubalani") method = CalculationMethod.Tubalani;
+            CalculationMethod method = CalculationMethod.Tubalani;
+            if (CalculationMethodName == "Jafari") method = CalculationMethod.Jafari;
             else if (CalculationMethodName == "Tehran") method = CalculationMethod.Tehran;
             else if (CalculationMethodName == "Custom") method = CalculationMethod.Custom;
 
