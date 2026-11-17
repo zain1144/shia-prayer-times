@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
@@ -409,8 +410,46 @@ namespace ShiaPrayerTimes
                     }
                 };
 
+                var testPrayerNotifBtn = new System.Windows.Controls.Button
+                {
+                    Content = "🔔",
+                    Width = 32,
+                    Height = 30,
+                    Margin = new Thickness(4, 0, 0, 0),
+                    Background = UIThemeHelper.GetBrush(isDark ? Color.FromRgb(51, 65, 85) : Color.FromRgb(226, 232, 240)),
+                    Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentEmerald),
+                    BorderThickness = new Thickness(0),
+                    FontWeight = FontWeights.Bold,
+                    Cursor = System.Windows.Input.Cursors.Hand,
+                    ToolTip = isAr ? "تجربة تنبيه هذا الوقت بالكامل (إشعار وصوت)" : "Test full notification for this prayer"
+                };
+                string pNameAr = namesAr.ContainsKey(ev) ? namesAr[ev] : ev;
+                testPrayerNotifBtn.Click += (s, e) =>
+                {
+                    var selMode = notifCombo.SelectedItem as ComboBoxItem;
+                    string modeStr = selMode != null ? (selMode.Tag as string) : "Adhan";
+                    var selSound = soundCombo.SelectedItem as ComboBoxItem;
+                    string sId = selSound != null ? (selSound.Tag as string) : "default";
+
+                    if (modeStr == "Off")
+                    {
+                        if (_audioNotifier.NotifyIcon != null)
+                        {
+                            _audioNotifier.NotifyIcon.ShowBalloonTip(4000,
+                                isAr ? "تنبيه معطل" : "Alert Disabled",
+                                isAr ? ("تنبيه صلاة " + pNameAr + " مضبوط على (إيقاف) حالياً.") : ("Alert for " + evKey + " is set to (Off)."),
+                                ToolTipIcon.Warning);
+                        }
+                    }
+                    else
+                    {
+                        _audioNotifier.TriggerPrayerNotification(pNameAr, evKey, "12:00", modeStr, sId, cfg.CustomAudioPath);
+                    }
+                };
+
                 soundPanel.Children.Add(soundCombo);
                 soundPanel.Children.Add(playBtn);
+                soundPanel.Children.Add(testPrayerNotifBtn);
                 Grid.SetColumn(soundPanel, 5);
                 rowGrid.Children.Add(soundPanel);
 
@@ -942,6 +981,167 @@ namespace ShiaPrayerTimes
             volPanel.Children.Add(_muteCheck);
             panel.Children.Add(volPanel);
 
+            // -------------------------------------------------------------
+            // Dedicated Notification Types Test Section (اختبار أنواع التنبيهات)
+            // -------------------------------------------------------------
+            panel.Children.Add(new Border
+            {
+                Height = 1,
+                Background = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkBorder : UIThemeHelper.LightBorder),
+                Margin = new Thickness(0, 16, 0, 16)
+            });
+
+            var testCard = new Border
+            {
+                Background = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkCardBg : Color.FromRgb(241, 245, 249)),
+                BorderBrush = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkBorder : UIThemeHelper.LightBorder),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(16),
+                Margin = new Thickness(0, 0, 0, 8)
+            };
+
+            var testCardStack = new StackPanel();
+
+            var testTitleGrid = new Grid();
+            testTitleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            testTitleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var testHeader = UIThemeHelper.CreateLabel(
+                isAr ? "🔔 تجربة واختبار أنواع التنبيهات والإشعارات:" : "🔔 Test Notification & Alert Types:",
+                isDark, true, 14, UIThemeHelper.AccentGold);
+            Grid.SetColumn(testHeader, 0);
+            testTitleGrid.Children.Add(testHeader);
+
+            var stopAudioBtn = new System.Windows.Controls.Button
+            {
+                Content = isAr ? "⏹ إيقاف الصوت" : "⏹ Stop Sound",
+                Padding = new Thickness(12, 4, 12, 4),
+                Background = UIThemeHelper.GetBrush(UIThemeHelper.AccentRed),
+                Foreground = Brushes.White,
+                FontWeight = FontWeights.Bold,
+                BorderThickness = new Thickness(0),
+                Cursor = System.Windows.Input.Cursors.Hand,
+                FontSize = 12
+            };
+            stopAudioBtn.Click += (s, e) => _audioNotifier.Stop();
+            Grid.SetColumn(stopAudioBtn, 1);
+            testTitleGrid.Children.Add(stopAudioBtn);
+            testCardStack.Children.Add(testTitleGrid);
+
+            var testSubtext = new TextBlock
+            {
+                Text = isAr ?
+                    "اضغط على أي زر لتجربة نوع التنبيه فوراً والتأكد من ظهوره كإشعار ويندوز وسماع النغمات بوضوح:" :
+                    "Click any button below to instantly trigger that notification type to verify Windows toast banners and audio output:",
+                Margin = new Thickness(0, 6, 0, 12),
+                FontSize = 12,
+                Foreground = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkTextSecondary : UIThemeHelper.LightTextSecondary),
+                TextWrapping = TextWrapping.Wrap
+            };
+            testCardStack.Children.Add(testSubtext);
+
+            var testBtnWrap = new WrapPanel { Margin = new Thickness(0, 0, 0, 10) };
+
+            var testStatusLabel = new TextBlock
+            {
+                Text = isAr ? "💡 ملاحظة: تظهر التنبيهات كإشعارات في زاوية الشاشة (Windows Banner / Balloon Tip)." : "💡 Note: Notifications appear as system toasts in the corner of your screen.",
+                FontSize = 12,
+                FontStyle = FontStyles.Italic,
+                Foreground = UIThemeHelper.GetBrush(isDark ? Color.FromRgb(148, 163, 184) : Color.FromRgb(100, 116, 139)),
+                Margin = new Thickness(0, 4, 0, 0),
+                TextWrapping = TextWrapping.Wrap
+            };
+
+            // 1. Visual Only
+            var btnVisual = new System.Windows.Controls.Button
+            {
+                Content = isAr ? "👁️ إشعار مرئي فقط (بدون صوت)" : "👁️ Visual Toast Only (Silent)",
+                Padding = new Thickness(14, 8, 14, 8),
+                Margin = new Thickness(0, 0, 8, 8),
+                Background = UIThemeHelper.GetBrush(Color.FromRgb(2, 132, 199)),
+                Foreground = Brushes.White,
+                FontWeight = FontWeights.Bold,
+                BorderThickness = new Thickness(0),
+                Cursor = System.Windows.Input.Cursors.Hand,
+                FontSize = 12
+            };
+            btnVisual.Click += (s, e) =>
+            {
+                _audioNotifier.TestVisualNotification(isAr ? "الظهر" : "Dhuhr", "Dhuhr", isAr ? "12:00 م" : "12:00 PM");
+                testStatusLabel.Text = isAr ? "✓ تم إرسال إشعار مرئي فقط (صامت) إلى زاوية الشاشة بنجاح!" : "✓ Visual toast (silent) notification sent successfully!";
+                testStatusLabel.Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentEmerald);
+            };
+            testBtnWrap.Children.Add(btnVisual);
+
+            // 2. Chime
+            var btnChime = new System.Windows.Controls.Button
+            {
+                Content = isAr ? "🎵 نغمة تنبيه (Chime Alert)" : "🎵 Chime Alert",
+                Padding = new Thickness(14, 8, 14, 8),
+                Margin = new Thickness(0, 0, 8, 8),
+                Background = UIThemeHelper.GetBrush(Color.FromRgb(217, 119, 6)),
+                Foreground = Brushes.White,
+                FontWeight = FontWeights.Bold,
+                BorderThickness = new Thickness(0),
+                Cursor = System.Windows.Input.Cursors.Hand,
+                FontSize = 12
+            };
+            btnChime.Click += (s, e) =>
+            {
+                _audioNotifier.TestChimeNotification(isAr ? "الظهر" : "Dhuhr", "Dhuhr", isAr ? "12:00 م" : "12:00 PM");
+                testStatusLabel.Text = isAr ? "✓ تم إرسال إشعار نغمة التنبيه وتشغيل الصوت بنجاح!" : "✓ Chime notification and tone sent successfully!";
+                testStatusLabel.Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentEmerald);
+            };
+            testBtnWrap.Children.Add(btnChime);
+
+            // 3. Adhan
+            var btnAdhan = new System.Windows.Controls.Button
+            {
+                Content = isAr ? "📢 أذان كامل (Full Adhan)" : "📢 Full Adhan Audio",
+                Padding = new Thickness(14, 8, 14, 8),
+                Margin = new Thickness(0, 0, 8, 8),
+                Background = UIThemeHelper.GetBrush(UIThemeHelper.AccentEmerald),
+                Foreground = Brushes.White,
+                FontWeight = FontWeights.Bold,
+                BorderThickness = new Thickness(0),
+                Cursor = System.Windows.Input.Cursors.Hand,
+                FontSize = 12
+            };
+            btnAdhan.Click += (s, e) =>
+            {
+                _audioNotifier.TestAdhanNotification("Dhuhr", isAr ? "الظهر" : "Dhuhr", isAr ? "12:00 م" : "12:00 PM", "default");
+                testStatusLabel.Text = isAr ? "✓ جاري تشغيل الأذان وإرسال إشعار الصلاة! (يمكنك إيقافه بالزر الأحمر)" : "✓ Playing Adhan and notification banner! (You can stop it with the red button)";
+                testStatusLabel.Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentEmerald);
+            };
+            testBtnWrap.Children.Add(btnAdhan);
+
+            // 4. Pre-Prayer Reminder
+            var btnReminder = new System.Windows.Controls.Button
+            {
+                Content = isAr ? "⏳ تذكير مسبق (10 دقائق)" : "⏳ Pre-Prayer Reminder (10m)",
+                Padding = new Thickness(14, 8, 14, 8),
+                Margin = new Thickness(0, 0, 8, 8),
+                Background = UIThemeHelper.GetBrush(Color.FromRgb(99, 102, 241)),
+                Foreground = Brushes.White,
+                FontWeight = FontWeights.Bold,
+                BorderThickness = new Thickness(0),
+                Cursor = System.Windows.Input.Cursors.Hand,
+                FontSize = 12
+            };
+            btnReminder.Click += (s, e) =>
+            {
+                _audioNotifier.TestReminderNotification(isAr ? "الظهر" : "Dhuhr", "Dhuhr", 10);
+                testStatusLabel.Text = isAr ? "✓ تم إرسال إشعار التذكير المسبق (قبل 10 دقائق) بنجاح!" : "✓ Pre-prayer reminder notification sent successfully!";
+                testStatusLabel.Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentEmerald);
+            };
+            testBtnWrap.Children.Add(btnReminder);
+
+            testCardStack.Children.Add(testBtnWrap);
+            testCardStack.Children.Add(testStatusLabel);
+            testCard.Child = testCardStack;
+            panel.Children.Add(testCard);
+
             // Adhan Library Section (Save multiple adhan sounds)
             panel.Children.Add(new Border
             {
@@ -1057,6 +1257,90 @@ namespace ShiaPrayerTimes
             themeLangGrid.Children.Add(lStack);
 
             panel.Children.Add(themeLangGrid);
+
+            // -------------------------------------------------------------
+            // Settings File Location Section (مسار ملف الإعدادات)
+            // -------------------------------------------------------------
+            panel.Children.Add(new Border
+            {
+                Height = 1,
+                Background = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkBorder : UIThemeHelper.LightBorder),
+                Margin = new Thickness(0, 16, 0, 16)
+            });
+
+            var settingsLocTitle = UIThemeHelper.CreateLabel(
+                isAr ? "📁 موقع ملف الإعدادات المحفوظة (Settings Location):" : "📁 Settings File Location:",
+                isDark, true, 14);
+            panel.Children.Add(settingsLocTitle);
+
+            var pathBox = new System.Windows.Controls.TextBox
+            {
+                Text = AppSettings.GetConfigFilePath(),
+                IsReadOnly = true,
+                Margin = new Thickness(0, 8, 0, 8),
+                Padding = new Thickness(8, 6, 8, 6),
+                FontSize = 12
+            };
+            UIThemeHelper.StyleTextBox(pathBox, isDark);
+            panel.Children.Add(pathBox);
+
+            var pathButtonsPanel = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 12) };
+
+            var openFolderBtn = new System.Windows.Controls.Button
+            {
+                Content = isAr ? "📁 فتح مجلد الإعدادات في متصفح الملفات" : "📁 Open Settings Folder",
+                Padding = new Thickness(14, 6, 14, 6),
+                Background = UIThemeHelper.GetBrush(isDark ? Color.FromRgb(51, 65, 85) : Color.FromRgb(226, 232, 240)),
+                Foreground = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkTextPrimary : UIThemeHelper.LightTextPrimary),
+                FontWeight = FontWeights.SemiBold,
+                BorderThickness = new Thickness(0),
+                Cursor = System.Windows.Input.Cursors.Hand,
+                FontSize = 12
+            };
+            openFolderBtn.Click += (s, e) =>
+            {
+                try
+                {
+                    string dir = AppSettings.GetConfigDirectory();
+                    Process.Start("explorer.exe", dir);
+                }
+                catch (Exception ex)
+                {
+                    System.Windows.MessageBox.Show(ex.Message);
+                }
+            };
+            pathButtonsPanel.Children.Add(openFolderBtn);
+
+            var openFileBtn = new System.Windows.Controls.Button
+            {
+                Content = isAr ? "📄 فتح ملف settings.json" : "📄 Open settings.json File",
+                Padding = new Thickness(14, 6, 14, 6),
+                Margin = new Thickness(8, 0, 0, 0),
+                Background = UIThemeHelper.GetBrush(isDark ? Color.FromRgb(51, 65, 85) : Color.FromRgb(226, 232, 240)),
+                Foreground = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkTextPrimary : UIThemeHelper.LightTextPrimary),
+                FontWeight = FontWeights.SemiBold,
+                BorderThickness = new Thickness(0),
+                Cursor = System.Windows.Input.Cursors.Hand,
+                FontSize = 12
+            };
+            openFileBtn.Click += (s, e) =>
+            {
+                try
+                {
+                    string f = AppSettings.GetConfigFilePath();
+                    if (File.Exists(f))
+                    {
+                        Process.Start(f);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Windows.MessageBox.Show(ex.Message);
+                }
+            };
+            pathButtonsPanel.Children.Add(openFileBtn);
+
+            panel.Children.Add(pathButtonsPanel);
 
             scroll.Content = panel;
             return scroll;

@@ -108,6 +108,13 @@ namespace ShiaPrayerTimes
             });
             menu.Items.Add(settingsItem);
 
+            var testMenu = new ToolStripMenuItem(isAr ? "اختبار التنبيهات" : "Test Notifications");
+            testMenu.DropDownItems.Add(new ToolStripMenuItem(isAr ? "👁️ إشعار مرئي فقط (بدون صوت)" : "👁️ Visual Toast Only (Silent)", null, (s, e) => _audioNotifier.TestVisualNotification()));
+            testMenu.DropDownItems.Add(new ToolStripMenuItem(isAr ? "🎵 نغمة تنبيه (Chime)" : "🎵 Chime Alert", null, (s, e) => _audioNotifier.TestChimeNotification()));
+            testMenu.DropDownItems.Add(new ToolStripMenuItem(isAr ? "📢 أذان كامل (Adhan)" : "📢 Full Adhan Alert", null, (s, e) => _audioNotifier.TestAdhanNotification()));
+            testMenu.DropDownItems.Add(new ToolStripMenuItem(isAr ? "⏳ تذكير مسبق (10 دقائق)" : "⏳ Pre-Prayer Reminder (10 min)", null, (s, e) => _audioNotifier.TestReminderNotification()));
+            menu.Items.Add(testMenu);
+
             var exitItem = new ToolStripMenuItem(isAr ? "خروج" : "Exit", null, (s, e) =>
             {
                 _notifyIcon.Visible = false;

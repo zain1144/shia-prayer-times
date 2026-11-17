@@ -181,7 +181,7 @@ namespace ShiaPrayerTimes
             }
         }
 
-        private static string GetConfigDirectory()
+        public static string GetConfigDirectory()
         {
             string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             string dir = Path.Combine(appData, "ShiaPrayerTimes");
@@ -192,7 +192,7 @@ namespace ShiaPrayerTimes
             return dir;
         }
 
-        private static string GetConfigFilePath()
+        public static string GetConfigFilePath()
         {
             return Path.Combine(GetConfigDirectory(), "settings.json");
         }

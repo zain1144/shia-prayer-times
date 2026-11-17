@@ -64,6 +64,43 @@ Every single prayer event has an independent configuration row:
 
 ---
 
+### 4. Notification Testing (اختبار التنبيهات والإشعارات)
+You can test and preview all notification types in 3 convenient ways:
+1. **From Settings -> Audio & System Tab (الأصوات والمكتبة):**
+   - **👁️ Visual Toast Only (إشعار مرئي فقط):** Displays a Windows notification banner in the corner of your screen without playing any audio.
+   - **🎵 Chime Alert (نغمة تنبيه):** Displays the notification banner and plays the subtle chime tone.
+   - **📢 Full Adhan (أذان كامل):** Displays the notification banner and plays the full Adhan audio (includes an instant red `⏹ Stop Sound` button).
+   - **⏳ Pre-Prayer Reminder (تذكير مسبق):** Displays the countdown reminder notification banner (e.g., *"10 minutes before Dhuhr"*) and plays the reminder tone.
+2. **Per-Prayer Row Testing (في مصفوفة الصلوات):**
+   - In the **Prayers Matrix Tab (مصفوفة الصلوات)**, click the **`🔔`** button on any prayer row to trigger the exact notification configured for that specific prayer (taking into account its active notification mode and custom Adhan audio).
+3. **From the Windows System Tray:**
+   - Right-click the app icon in the Windows taskbar system tray -> hover over **اختبار التنبيهات (Test Notifications)** -> select any notification type to trigger it immediately.
+
+---
+
+### 5. Settings File Location (موقع ومسار ملف الإعدادات)
+All user configurations, custom coordinates, selected calculation methods, per-prayer minute offsets, notification preferences, and custom Adhan sound libraries are stored locally in a persistent JSON file:
+
+- **Path:**
+  ```text
+  %APPDATA%\ShiaPrayerTimes\settings.json
+  ```
+- **Full Path on Windows:**
+  ```text
+  C:\Users\<Your-Username>\AppData\Roaming\ShiaPrayerTimes\settings.json
+  ```
+
+#### How to Access or Edit the Settings File:
+1. **Directly from the App:**
+   - Open **Settings** -> go to the **🔊 الأصوات والمكتبة (Audio & System)** tab.
+   - At the bottom, click **`📁 فتح مجلد الإعدادات في متصفح الملفات`** to open the folder in Windows File Explorer, or click **`📄 فتح ملف settings.json`** to view/edit the JSON file directly.
+2. **Via Windows Run Dialog:**
+   - Press `Win + R` on your keyboard, paste `%APPDATA%\ShiaPrayerTimes`, and hit Enter.
+3. **To Reset to Factory Defaults:**
+   - Close `ShiaPrayerTimes.exe` and simply delete `settings.json`. The application will regenerate the default configuration upon its next launch.
+
+---
+
 ## 🚀 How to Run
 
 1. Close any running instance of `ShiaPrayerTimes` in your system tray or background.

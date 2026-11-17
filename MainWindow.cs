@@ -57,7 +57,7 @@ namespace ShiaPrayerTimes
         {
             _audioNotifier = new AudioNotifier(_settings, null);
             _trayManager = new TrayManager(this, _settings, _audioNotifier);
-            _audioNotifier = new AudioNotifier(_settings, _trayManager.NotifyIcon);
+            _audioNotifier.NotifyIcon = _trayManager.NotifyIcon;
 
             _audioNotifier.PlaybackStateChanged += (isPlaying, trackName) =>
             {

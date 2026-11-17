@@ -18,6 +18,12 @@ namespace ShiaPrayerTimes
         public bool IsPlaying { get { return _isPlaying; } }
         public string CurrentTrackName { get { return _currentTrackName; } }
 
+        public NotifyIcon NotifyIcon
+        {
+            get { return _notifyIcon; }
+            set { _notifyIcon = value; }
+        }
+
         public AudioNotifier(AppSettings settings, NotifyIcon notifyIcon)
         {
             _settings = settings;
@@ -180,6 +186,61 @@ namespace ShiaPrayerTimes
                 _notifyIcon.ShowBalloonTip(6000, title, body, ToolTipIcon.Info);
             }
 
+            PlayChime();
+        }
+
+        public void TestVisualNotification(string prayerNameAr = "الظهر", string prayerNameEn = "Dhuhr", string timeStr = "12:00 م")
+        {
+            string title = _settings.Language == "ar" ? "تجربة: إشعار مرئي فقط" : "Test: Visual Toast Only";
+            string body = _settings.Language == "ar"
+                ? string.Format("حان الآن موعد صلاة {0} ({1}) - بدون صوت", prayerNameAr, timeStr)
+                : string.Format("It is now time for {0} ({1}) - Silent Mode", prayerNameEn, timeStr);
+
+            if (_notifyIcon != null)
+            {
+                _notifyIcon.ShowBalloonTip(7000, title, body, ToolTipIcon.Info);
+            }
+        }
+
+        public void TestChimeNotification(string prayerNameAr = "الظهر", string prayerNameEn = "Dhuhr", string timeStr = "12:00 م")
+        {
+            string title = _settings.Language == "ar" ? "تجربة: نغمة تنبيه (Chime)" : "Test: Chime Notification";
+            string body = _settings.Language == "ar"
+                ? string.Format("حان الآن موعد صلاة {0} ({1})", prayerNameAr, timeStr)
+                : string.Format("It is now time for {0} ({1})", prayerNameEn, timeStr);
+
+            if (_notifyIcon != null)
+            {
+                _notifyIcon.ShowBalloonTip(7000, title, body, ToolTipIcon.Info);
+            }
+            PlayChime();
+        }
+
+        public void TestAdhanNotification(string prayerNameEn = "Dhuhr", string prayerNameAr = "الظهر", string timeStr = "12:00 م", string soundId = "default")
+        {
+            string title = _settings.Language == "ar" ? "تجربة: أذان كامل (Adhan)" : "Test: Full Adhan Alert";
+            string body = _settings.Language == "ar"
+                ? string.Format("حان الآن موعد أذان صلاة {0} ({1})", prayerNameAr, timeStr)
+                : string.Format("It is now time for {0} Adhan ({1})", prayerNameEn, timeStr);
+
+            if (_notifyIcon != null)
+            {
+                _notifyIcon.ShowBalloonTip(10000, title, body, ToolTipIcon.Info);
+            }
+            PlayAdhan(prayerNameEn, soundId, "");
+        }
+
+        public void TestReminderNotification(string prayerNameAr = "الظهر", string prayerNameEn = "Dhuhr", int minutesBefore = 10)
+        {
+            string title = _settings.Language == "ar" ? "تجربة: تذكير مسبق بالصلاة" : "Test: Pre-Prayer Reminder";
+            string body = _settings.Language == "ar"
+                ? string.Format("اقترب موعد صلاة {0} بعد {1} دقائق", prayerNameAr, minutesBefore)
+                : string.Format("{0} prayer will be in {1} minutes", prayerNameEn, minutesBefore);
+
+            if (_notifyIcon != null)
+            {
+                _notifyIcon.ShowBalloonTip(7000, title, body, ToolTipIcon.Info);
+            }
             PlayChime();
         }
     }
