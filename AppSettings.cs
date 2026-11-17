@@ -224,20 +224,93 @@ namespace ShiaPrayerTimes
             return defaultSettings;
         }
 
+        public static List<LocationPreset> GetDefaultLocationPresets()
+        {
+            return new List<LocationPreset>
+            {
+                // محافظة القطيف وتوابعها
+                new LocationPreset("القطيف - المركز (Qatif)", 26.5577, 50.0081, 3.0),
+                new LocationPreset("سيهات (Saihat)", 26.4750, 50.0416, 3.0),
+                new LocationPreset("جزيرة تاروت (Tarout Island)", 26.5745, 50.0560, 3.0),
+                new LocationPreset("صفوى (Safwa)", 26.6508, 49.9577, 3.0),
+                new LocationPreset("العوامية (Al-Awamiyah)", 26.5912, 49.9983, 3.0),
+                new LocationPreset("القديح (Al-Qudaih)", 26.5786, 50.0028, 3.0),
+                new LocationPreset("الجارودية (Al-Jaroudiya)", 26.5297, 49.9911, 3.0),
+                new LocationPreset("أم الحمام (Umm Al-Hammam)", 26.5161, 50.0069, 3.0),
+                new LocationPreset("الجش (Al-Jish)", 26.5117, 49.9886, 3.0),
+                new LocationPreset("عنك (Anak)", 26.5244, 50.0381, 3.0),
+                new LocationPreset("سنابس - تاروت (Sanabis)", 26.5767, 50.0764, 3.0),
+                new LocationPreset("الربيعية (Al-Rabi'iya)", 26.5683, 50.0631, 3.0),
+                new LocationPreset("الخويلدية (Al-Khuwaildiyah)", 26.5417, 49.9972, 3.0),
+                new LocationPreset("التوبي (Al-Tobi)", 26.5431, 50.0056, 3.0),
+                new LocationPreset("حلة محيش (Hilla Muhaysh)", 26.5250, 50.0083, 3.0),
+                new LocationPreset("الأوجام (Al-Awjam)", 26.5639, 49.9361, 3.0),
+
+                // محافظة الأحساء
+                new LocationPreset("الأحساء - الهفوف (Hofuf)", 25.3640, 49.5880, 3.0),
+                new LocationPreset("الأحساء - المبرز (Mubarraz)", 25.4190, 49.5930, 3.0),
+                new LocationPreset("الأحساء - العمران (Al-Omran)", 25.4389, 49.7183, 3.0),
+                new LocationPreset("الأحساء - القارة (Al-Qarah)", 25.4167, 49.6667, 3.0),
+                new LocationPreset("الأحساء - الرميلة (Al-Rumaila)", 25.4333, 49.6833, 3.0),
+                new LocationPreset("الأحساء - الطرف (Al-Taraf)", 25.3500, 49.7167, 3.0),
+
+                // المنطقة الشرقية وباقي السعودية
+                new LocationPreset("الدمام (Dammam)", 26.4207, 50.0888, 3.0),
+                new LocationPreset("الخبر (Khobar)", 26.2818, 50.2084, 3.0),
+                new LocationPreset("الظهران (Dhahran)", 26.2886, 50.1140, 3.0),
+                new LocationPreset("الجبيل (Jubail)", 27.0046, 49.6596, 3.0),
+                new LocationPreset("حفر الباطن (Hafar Al-Batin)", 28.4328, 45.9708, 3.0),
+                new LocationPreset("الرياض (Riyadh)", 24.7136, 46.6753, 3.0),
+                new LocationPreset("المدينة المنورة (Madinah)", 24.5247, 39.5692, 3.0),
+                new LocationPreset("مكة المكرمة (Makkah)", 21.4225, 39.8262, 3.0),
+                new LocationPreset("جدة (Jeddah)", 21.4858, 39.1925, 3.0),
+                new LocationPreset("نجران (Najran)", 17.4924, 44.1277, 3.0),
+
+                // مملكة البحرين
+                new LocationPreset("المنامة (Manama, Bahrain)", 26.2285, 50.5860, 3.0),
+                new LocationPreset("المحرق (Muharraq, Bahrain)", 26.2572, 50.6119, 3.0),
+                new LocationPreset("سترة (Sitra, Bahrain)", 26.1550, 50.6186, 3.0),
+                new LocationPreset("سار (Saar, Bahrain)", 26.1969, 50.4853, 3.0),
+                new LocationPreset("الدراز (Diraz, Bahrain)", 26.2197, 50.4686, 3.0),
+                new LocationPreset("جدحفص (Jidhafs, Bahrain)", 26.2167, 50.5333, 3.0),
+                new LocationPreset("عالي (A'ali, Bahrain)", 26.1539, 50.5283, 3.0),
+                new LocationPreset("السنابس (Sanabis, Bahrain)", 26.2294, 50.5406, 3.0),
+                new LocationPreset("كرزكان (Karzakan, Bahrain)", 26.1417, 50.4833, 3.0),
+                new LocationPreset("بوري (Buri, Bahrain)", 26.1667, 50.5000, 3.0),
+
+                // العراق
+                new LocationPreset("النجف الأشرف (Najaf, Iraq)", 31.9959, 44.3148, 3.0),
+                new LocationPreset("كربلاء المقدسة (Karbala, Iraq)", 32.6160, 44.0249, 3.0),
+                new LocationPreset("الكاظمية (Kadhimiya, Iraq)", 33.3800, 44.3400, 3.0),
+                new LocationPreset("سامراء (Samarra, Iraq)", 34.1983, 43.8742, 3.0),
+                new LocationPreset("الكوفة (Kufa, Iraq)", 32.0294, 44.4022, 3.0),
+                new LocationPreset("البصرة (Basra, Iraq)", 30.5081, 47.7835, 3.0),
+                new LocationPreset("بغداد (Baghdad, Iraq)", 33.3152, 44.3661, 3.0),
+
+                // الكويت & عُمان & الإمارات & لبنان
+                new LocationPreset("الكويت العاصمة (Kuwait City)", 29.3759, 47.9774, 3.0),
+                new LocationPreset("مسقط (Muscat, Oman)", 23.5880, 58.3829, 4.0),
+                new LocationPreset("دبي (Dubai, UAE)", 25.2048, 55.2708, 4.0),
+                new LocationPreset("بيروت (Beirut, Lebanon)", 33.8938, 35.5018, 2.0),
+
+                // إيران
+                new LocationPreset("قم المقدسة (Qom, Iran)", 34.6416, 50.8746, 3.5),
+                new LocationPreset("مشهد المقدسة (Mashhad, Iran)", 36.2972, 59.6067, 3.5),
+                new LocationPreset("طهران (Tehran, Iran)", 35.6892, 51.3890, 3.5),
+                new LocationPreset("الأهواز (Ahvaz, Iran)", 31.3183, 48.6706, 3.5),
+
+                // بلدان المهجر
+                new LocationPreset("ديربورن / ديترويت (Dearborn / Detroit, USA)", 42.3223, -83.1763, -5.0),
+                new LocationPreset("لندن (London, UK)", 51.5074, -0.1278, 0.0)
+            };
+        }
+
         public void EnsureDefaults()
         {
             if (Location == null) Location = new LocationPreset("القطيف - المملكة العربية السعودية (Qatif)", 26.5577, 50.0081, 3.0, 0);
-            if (Presets == null || Presets.Count == 0)
+            if (Presets == null || Presets.Count < 20)
             {
-                Presets = new List<LocationPreset>
-                {
-                    new LocationPreset("القطيف (Qatif, Saudi Arabia)", 26.5577, 50.0081, 3.0),
-                    new LocationPreset("النجف الأشرف (Najaf, Iraq)", 31.9959, 44.3148, 3.0),
-                    new LocationPreset("كربلاء المقدسة (Karbala, Iraq)", 32.6160, 44.0249, 3.0),
-                    new LocationPreset("قم المقدسة (Qom, Iran)", 34.6416, 50.8746, 3.5),
-                    new LocationPreset("طهران (Tehran, Iran)", 35.6892, 51.3890, 3.5),
-                    new LocationPreset("المنامة (Manama, Bahrain)", 26.2285, 50.5860, 3.0)
-                };
+                Presets = GetDefaultLocationPresets();
             }
             InitDefaultSounds();
 

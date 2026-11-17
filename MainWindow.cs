@@ -257,7 +257,7 @@ namespace ShiaPrayerTimes
             // Quick Location Preset Dropdown
             _quickLocationCombo = new ComboBox
             {
-                Width = 230,
+                Width = 250,
                 Height = 32,
                 Margin = new Thickness(0, 0, 6, 0),
                 VerticalAlignment = VerticalAlignment.Center,

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
@@ -691,40 +692,58 @@ namespace ShiaPrayerTimes
             var scroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto };
             var panel = new StackPanel { Margin = new Thickness(24) };
 
-            // Automatic Location Detection Button Header
-            var autoLocBorder = new Border
+            // -----------------------------------------------------------------
+            // Card 1: Smart City & Neighborhood Search (بدون تشغيل خدمات الموقع)
+            // -----------------------------------------------------------------
+            var searchCard = new Border
             {
                 Background = UIThemeHelper.GetBrush(isDark ? Color.FromRgb(20, 30, 48) : Color.FromRgb(238, 242, 255)),
                 BorderBrush = UIThemeHelper.GetBrush(UIThemeHelper.AccentEmerald),
                 BorderThickness = new Thickness(1.5),
                 CornerRadius = new CornerRadius(8),
-                Padding = new Thickness(16, 12, 16, 12),
-                Margin = new Thickness(0, 0, 0, 16)
+                Padding = new Thickness(16, 12, 16, 14),
+                Margin = new Thickness(0, 0, 0, 14)
             };
 
-            var autoGrid = new Grid();
-            autoGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            autoGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var searchStack = new StackPanel();
+            var searchHeader = UIThemeHelper.CreateLabel(
+                isAr ? "🔍 البحث عن المدينة أو الحي (بدون الحاجة لخدمات الموقع أو GPS):" : "🔍 Search City or Neighborhood (No GPS or Location Services Required):",
+                isDark, true, 14, UIThemeHelper.AccentEmerald);
+            searchStack.Children.Add(searchHeader);
 
-            var autoTextStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-            var autoTitle = UIThemeHelper.CreateLabel(isAr ? "تحديد الموقع الجغرافي تلقائياً:" : "Auto-Detect Location:", isDark, true, 14);
-            _detectStatusLabel = new TextBlock
+            var searchSubtext = new TextBlock
             {
-                Text = isAr ? "اضغط على الزر لتحديد موقعك الحالي وخطوط الطول والعرض تلقائياً." : "Click to detect your current coordinates automatically.",
+                Text = isAr ?
+                    "اكتب اسم مدينتك أو قريتك أو حيك وسيجلب البرنامج إحداثياتها الدقيقة فوراً:" :
+                    "Type the name of your city, town, or neighborhood to fetch exact coordinates immediately:",
                 FontSize = 12,
                 Foreground = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkTextSecondary : UIThemeHelper.LightTextSecondary),
-                Margin = new Thickness(0, 2, 0, 0)
+                Margin = new Thickness(0, 4, 0, 8),
+                TextWrapping = TextWrapping.Wrap
             };
-            autoTextStack.Children.Add(autoTitle);
-            autoTextStack.Children.Add(_detectStatusLabel);
-            Grid.SetColumn(autoTextStack, 0);
-            autoGrid.Children.Add(autoTextStack);
+            searchStack.Children.Add(searchSubtext);
 
-            var detectBtn = new System.Windows.Controls.Button
+            var searchInputGrid = new Grid();
+            searchInputGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            searchInputGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var searchBox = new System.Windows.Controls.TextBox
             {
-                Content = isAr ? "📍 تحديد موقعي تلقائياً" : "📍 Auto-Detect Location",
-                Height = 36,
+                Height = 34,
+                FontSize = 13,
+                VerticalContentAlignment = VerticalAlignment.Center,
+                Padding = new Thickness(8, 0, 8, 0)
+            };
+            UIThemeHelper.StyleTextBox(searchBox, isDark);
+            Grid.SetColumn(searchBox, 0);
+            searchInputGrid.Children.Add(searchBox);
+
+            var searchBtn = new System.Windows.Controls.Button
+            {
+                Content = isAr ? "🔍 بحث فوري" : "🔍 Search",
+                Height = 34,
                 Padding = new Thickness(16, 0, 16, 0),
+                Margin = new Thickness(8, 0, 0, 0),
                 Background = UIThemeHelper.GetBrush(UIThemeHelper.AccentEmerald),
                 Foreground = Brushes.White,
                 FontWeight = FontWeights.Bold,
@@ -732,42 +751,220 @@ namespace ShiaPrayerTimes
                 Cursor = System.Windows.Input.Cursors.Hand,
                 FontSize = 13
             };
-            detectBtn.Click += async (s, e) =>
+            Grid.SetColumn(searchBtn, 1);
+            searchInputGrid.Children.Add(searchBtn);
+            searchStack.Children.Add(searchInputGrid);
+
+            var searchResultsCombo = new System.Windows.Controls.ComboBox
             {
-                detectBtn.IsEnabled = false;
-                _detectStatusLabel.Text = isAr ? "جاري البحث وتحديد الموقع عبر الحساسات والشبكة..." : "Detecting location...";
-                _detectStatusLabel.Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentGold);
+                Height = 32,
+                Margin = new Thickness(0, 8, 0, 0),
+                Visibility = Visibility.Collapsed
+            };
+            UIThemeHelper.StyleComboBox(searchResultsCombo, isDark);
+            searchStack.Children.Add(searchResultsCombo);
 
-                var result = await Task.Run(() => LocationDetector.DetectLocation());
+            var searchStatusLabel = new TextBlock
+            {
+                Text = isAr ? "أمثلة: سيهات، تاروت، صفوى، الهفوف، سار، النجف، الكاظمية، أو أي منطقة بالعالم." : "Examples: Saihat, Tarout, Safwa, Hofuf, Saar, Najaf, Kadhimiya, London...",
+                FontSize = 12,
+                FontStyle = FontStyles.Italic,
+                Foreground = UIThemeHelper.GetBrush(isDark ? Color.FromRgb(148, 163, 184) : Color.FromRgb(100, 116, 139)),
+                Margin = new Thickness(0, 6, 0, 0),
+                TextWrapping = TextWrapping.Wrap
+            };
+            searchStack.Children.Add(searchStatusLabel);
 
-                detectBtn.IsEnabled = true;
-                if (result.Success)
+            // Search action
+            Action doSearch = async () =>
+            {
+                string q = searchBox.Text.Trim();
+                if (string.IsNullOrEmpty(q)) return;
+
+                searchBtn.IsEnabled = false;
+                searchStatusLabel.Text = isAr ? "جاري البحث عن الإحداثيات الدقيقة..." : "Searching for coordinates...";
+                searchStatusLabel.Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentGold);
+
+                var localMatches = new List<LocationPreset>();
+                foreach (var p in _settings.Presets)
                 {
-                    _locNameBox.Text = result.Name;
-                    _latBox.Text = result.Latitude.ToString("0.0000");
-                    _lonBox.Text = result.Longitude.ToString("0.0000");
-                    _tzBox.Text = result.Timezone.ToString("0.0");
-                    _detectStatusLabel.Text = (isAr ? "تم تحديد الموقع بنجاح: " : "Location detected: ") + result.Name;
-                    _detectStatusLabel.Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentEmerald);
+                    if (p.Name.IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        localMatches.Add(p);
+                    }
+                }
+
+                var webMatches = await Task.Run(() => LocationDetector.SearchLocationByName(q));
+
+                searchBtn.IsEnabled = true;
+                searchResultsCombo.Items.Clear();
+
+                foreach (var lp in localMatches)
+                {
+                    searchResultsCombo.Items.Add(new ComboBoxItem
+                    {
+                        Content = "⭐ " + lp.Name + string.Format(" ({0:0.00}°, {1:0.00}°)", lp.Latitude, lp.Longitude),
+                        Tag = new LocationDetectionResult { Name = lp.Name, Latitude = lp.Latitude, Longitude = lp.Longitude, Timezone = lp.Timezone }
+                    });
+                }
+
+                foreach (var wm in webMatches)
+                {
+                    searchResultsCombo.Items.Add(new ComboBoxItem
+                    {
+                        Content = "🌐 " + wm.Name + string.Format(" ({0:0.00}°, {1:0.00}°)", wm.Latitude, wm.Longitude),
+                        Tag = wm
+                    });
+                }
+
+                if (searchResultsCombo.Items.Count > 0)
+                {
+                    searchResultsCombo.Visibility = Visibility.Visible;
+                    searchResultsCombo.SelectedIndex = 0;
+                    searchStatusLabel.Text = isAr ? string.Format("✓ تم العثور على {0} نتائج، تم اختيار الأولى تلقائياً ويمكنك التبديل:", searchResultsCombo.Items.Count) : string.Format("✓ Found {0} results. Top match selected:", searchResultsCombo.Items.Count);
+                    searchStatusLabel.Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentEmerald);
                 }
                 else
                 {
-                    _detectStatusLabel.Text = result.ErrorMessage;
-                    _detectStatusLabel.Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentRed);
+                    searchResultsCombo.Visibility = Visibility.Collapsed;
+                    searchStatusLabel.Text = isAr ? "لم يتم العثور على نتائج. يمكنك تجربة كتابة اسم المدينة بلغة أخرى أو نسخ الإحداثيات." : "No results found. Try another spelling or paste coordinates.";
+                    searchStatusLabel.Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentRed);
                 }
             };
-            Grid.SetColumn(detectBtn, 1);
-            autoGrid.Children.Add(detectBtn);
 
-            autoLocBorder.Child = autoGrid;
-            panel.Children.Add(autoLocBorder);
+            searchBtn.Click += (s, e) => doSearch();
+            searchBox.KeyDown += (s, e) =>
+            {
+                if (e.Key == System.Windows.Input.Key.Enter) doSearch();
+            };
 
-            // Preset Selection
+            searchResultsCombo.SelectionChanged += (s, e) =>
+            {
+                var sel = searchResultsCombo.SelectedItem as ComboBoxItem;
+                if (sel != null && sel.Tag is LocationDetectionResult)
+                {
+                    var r = (LocationDetectionResult)sel.Tag;
+                    _locNameBox.Text = r.Name;
+                    _latBox.Text = r.Latitude.ToString("0.0000");
+                    _lonBox.Text = r.Longitude.ToString("0.0000");
+                    _tzBox.Text = r.Timezone.ToString("0.0");
+                }
+            };
+
+            searchCard.Child = searchStack;
+            panel.Children.Add(searchCard);
+
+            // -----------------------------------------------------------------
+            // Card 2: Smart Paste from Google Maps / Map Helper (دقة متناهية لمنزلك)
+            // -----------------------------------------------------------------
+            var pasteCard = new Border
+            {
+                Background = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkCardBg : Color.FromRgb(241, 245, 249)),
+                BorderBrush = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkBorder : UIThemeHelper.LightBorder),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(16, 12, 16, 12),
+                Margin = new Thickness(0, 0, 0, 14)
+            };
+
+            var pasteStack = new StackPanel();
+            var pasteHeader = UIThemeHelper.CreateLabel(
+                isAr ? "📋 لصق الإحداثيات المباشرة أو رابط خرائط جوجل (دقة بالمتر لمنزلك):" : "📋 Smart Paste Coordinates or Google Maps Link (Exact Meter Accuracy):",
+                isDark, true, 13);
+            pasteStack.Children.Add(pasteHeader);
+
+            var pasteBtnRow = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, Margin = new Thickness(0, 8, 0, 6) };
+
+            var pasteBtn = new System.Windows.Controls.Button
+            {
+                Content = isAr ? "📋 لصق من الحافظة (Paste)" : "📋 Paste from Clipboard",
+                Padding = new Thickness(14, 6, 14, 6),
+                Background = UIThemeHelper.GetBrush(Color.FromRgb(2, 132, 199)),
+                Foreground = Brushes.White,
+                FontWeight = FontWeights.Bold,
+                BorderThickness = new Thickness(0),
+                Cursor = System.Windows.Input.Cursors.Hand,
+                FontSize = 12
+            };
+
+            var openMapsBtn = new System.Windows.Controls.Button
+            {
+                Content = isAr ? "🗺️ فتح خرائط جوجل لنسخ الإحداثيات" : "🗺️ Open Google Maps in Browser",
+                Padding = new Thickness(14, 6, 14, 6),
+                Margin = new Thickness(8, 0, 0, 0),
+                Background = UIThemeHelper.GetBrush(isDark ? Color.FromRgb(51, 65, 85) : Color.FromRgb(226, 232, 240)),
+                Foreground = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkTextPrimary : UIThemeHelper.LightTextPrimary),
+                FontWeight = FontWeights.SemiBold,
+                BorderThickness = new Thickness(0),
+                Cursor = System.Windows.Input.Cursors.Hand,
+                FontSize = 12
+            };
+
+            openMapsBtn.Click += (s, e) =>
+            {
+                try
+                {
+                    double curLat = _settings.Location != null ? _settings.Location.Latitude : 26.5577;
+                    double curLon = _settings.Location != null ? _settings.Location.Longitude : 50.0081;
+                    string url = string.Format(CultureInfo.InvariantCulture, "https://www.google.com/maps/@{0},{1},15z", curLat, curLon);
+                    Process.Start(url);
+                }
+                catch { }
+            };
+
+            var pasteStatus = new TextBlock
+            {
+                Text = isAr ? "طريقة سهلة: اضغط بالزر الأيمن على منزلك في خرائط جوجل وانسخ الإحداثيات، ثم اضغط (لصق من الحافظة)." : "Tip: Right-click your house on Google Maps, copy coordinates, then click Paste here.",
+                FontSize = 11.5,
+                FontStyle = FontStyles.Italic,
+                Foreground = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkTextSecondary : UIThemeHelper.LightTextSecondary),
+                Margin = new Thickness(0, 4, 0, 0),
+                TextWrapping = TextWrapping.Wrap
+            };
+
+            pasteBtn.Click += (s, e) =>
+            {
+                try
+                {
+                    string clip = System.Windows.Clipboard.GetText();
+                    double lat, lon;
+                    if (LocationDetector.TryParseCoordinates(clip, out lat, out lon))
+                    {
+                        _latBox.Text = lat.ToString("0.0000");
+                        _lonBox.Text = lon.ToString("0.0000");
+                        double tz = LocationDetector.EstimateTimezone(lon);
+                        _tzBox.Text = tz.ToString("0.0");
+                        _locNameBox.Text = isAr ? string.Format("موقع مخصص ({0:0.00}°, {1:0.00}°)", lat, lon) : string.Format("Custom Location ({0:0.00}°, {1:0.00}°)", lat, lon);
+                        pasteStatus.Text = (isAr ? "✓ تم استخراج ولصق الإحداثيات بنجاح: " : "✓ Coordinates extracted successfully: ") + string.Format("{0:0.0000}°, {1:0.0000}°", lat, lon);
+                        pasteStatus.Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentEmerald);
+                    }
+                    else
+                    {
+                        pasteStatus.Text = isAr ? "لم يتم العثور على إحداثيات صالحة في الحافظة. انسخ إحداثيات مثل: 26.5577, 50.0081" : "No valid coordinates found in clipboard. Copy numbers like: 26.5577, 50.0081";
+                        pasteStatus.Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentRed);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    pasteStatus.Text = ex.Message;
+                }
+            };
+
+            pasteBtnRow.Children.Add(pasteBtn);
+            pasteBtnRow.Children.Add(openMapsBtn);
+            pasteStack.Children.Add(pasteBtnRow);
+            pasteStack.Children.Add(pasteStatus);
+            pasteCard.Child = pasteStack;
+            panel.Children.Add(pasteCard);
+
+            // -----------------------------------------------------------------
+            // Card 3: Preset Cities Dropdown (قائمة المدن المسبقة الإعداد)
+            // -----------------------------------------------------------------
             panel.Children.Add(UIThemeHelper.CreateLabel(
-                isAr ? "اختيار مدينة مسبقة الإعداد أو إدخال إحداثيات مخصصة:" : "Select City Preset or Custom Coordinates:",
-                isDark, true, 14));
+                isAr ? "🏙️ اختيار مدينة أو بلدة من القائمة الجاهزة (أكثر من 50 مدينة):" : "🏙️ Select City from Ready Presets (50+ Cities & Towns):",
+                isDark, true, 13));
 
-            _presetCombo = new System.Windows.Controls.ComboBox { Width = 400, Height = 34, Margin = new Thickness(0, 8, 0, 12), HorizontalAlignment = System.Windows.HorizontalAlignment.Left };
+            _presetCombo = new System.Windows.Controls.ComboBox { Width = 500, Height = 34, Margin = new Thickness(0, 8, 0, 14), HorizontalAlignment = System.Windows.HorizontalAlignment.Left };
             UIThemeHelper.StyleComboBox(_presetCombo, isDark);
             foreach (var preset in _settings.Presets)
             {
@@ -797,6 +994,80 @@ namespace ShiaPrayerTimes
                 }
             };
             panel.Children.Add(_presetCombo);
+
+            // -----------------------------------------------------------------
+            // Card 4: IP Geolocation (تخمين الموقع عبر مزود الخدمة - اختياري)
+            // -----------------------------------------------------------------
+            var autoLocBorder = new Border
+            {
+                Background = UIThemeHelper.GetBrush(isDark ? Color.FromRgb(15, 23, 42) : Color.FromRgb(248, 250, 252)),
+                BorderBrush = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkBorder : UIThemeHelper.LightBorder),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(14, 10, 14, 10),
+                Margin = new Thickness(0, 0, 0, 16)
+            };
+
+            var autoGrid = new Grid();
+            autoGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            autoGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var autoTextStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            var autoTitle = UIThemeHelper.CreateLabel(isAr ? "📡 تخمين الموقع عبر مزود الإنترنت (IP):" : "📡 Estimate Location via ISP (IP Geolocation):", isDark, true, 13);
+            _detectStatusLabel = new TextBlock
+            {
+                Text = isAr ? "ملاحظة: هذا الخيار يعتمد على سيرفر مزود الإنترنت (وقد يظهر موقع السيرفر المركزي كالرياض أو جدة)." : "Note: IP lookup may point to your ISP's central server gateway rather than your local area.",
+                FontSize = 11.5,
+                Foreground = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkTextSecondary : UIThemeHelper.LightTextSecondary),
+                Margin = new Thickness(0, 2, 0, 0),
+                TextWrapping = TextWrapping.Wrap
+            };
+            autoTextStack.Children.Add(autoTitle);
+            autoTextStack.Children.Add(_detectStatusLabel);
+            Grid.SetColumn(autoTextStack, 0);
+            autoGrid.Children.Add(autoTextStack);
+
+            var detectBtn = new System.Windows.Controls.Button
+            {
+                Content = isAr ? "📡 تخمين عبر IP" : "📡 Lookup IP",
+                Height = 32,
+                Padding = new Thickness(14, 0, 14, 0),
+                Background = UIThemeHelper.GetBrush(isDark ? Color.FromRgb(51, 65, 85) : Color.FromRgb(226, 232, 240)),
+                Foreground = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkTextPrimary : UIThemeHelper.LightTextPrimary),
+                FontWeight = FontWeights.SemiBold,
+                BorderThickness = new Thickness(0),
+                Cursor = System.Windows.Input.Cursors.Hand,
+                FontSize = 12
+            };
+            detectBtn.Click += async (s, e) =>
+            {
+                detectBtn.IsEnabled = false;
+                _detectStatusLabel.Text = isAr ? "جاري الاستعلام عن عنوان الـ IP لمزود الخدمة..." : "Querying ISP gateway IP...";
+                _detectStatusLabel.Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentGold);
+
+                var result = await Task.Run(() => LocationDetector.DetectLocation());
+
+                detectBtn.IsEnabled = true;
+                if (result.Success)
+                {
+                    _locNameBox.Text = result.Name;
+                    _latBox.Text = result.Latitude.ToString("0.0000");
+                    _lonBox.Text = result.Longitude.ToString("0.0000");
+                    _tzBox.Text = result.Timezone.ToString("0.0");
+                    _detectStatusLabel.Text = (isAr ? "تم الاستعلام (موقع سيرفر الإنترنت): " : "ISP Server Location: ") + result.Name;
+                    _detectStatusLabel.Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentGold);
+                }
+                else
+                {
+                    _detectStatusLabel.Text = result.ErrorMessage;
+                    _detectStatusLabel.Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentRed);
+                }
+            };
+            Grid.SetColumn(detectBtn, 1);
+            autoGrid.Children.Add(detectBtn);
+
+            autoLocBorder.Child = autoGrid;
+            panel.Children.Add(autoLocBorder);
 
             // Coordinates Grid
             var grid = new Grid { Margin = new Thickness(0, 8, 0, 12) };

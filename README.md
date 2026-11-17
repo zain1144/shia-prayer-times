@@ -56,9 +56,16 @@ Every single prayer event has an independent configuration row:
 
 ---
 
-### 3. Location & Calendar Management
-- **One-Click Auto-Detect Location (`📍`):** Automatically detects coordinates, timezone, and city name via network or Windows sensors.
-- **Pre-configured City Presets:** Qatif, Najaf, Karbala, Qom, Tehran, Manama, Al-Ahsa, Muscat, Beirut, London, Detroit.
+### 3. Location & Calendar Management (Zero Location-Service Required)
+Because telecom ISPs (such as STC, Mobily, Zain, 5G, or VPNs) route internet traffic through central corporate data centers (e.g. Riyadh, Jeddah, Dammam), relying on ISP IP geolocation often yields a server location far from your actual town. Astronomical prayer times require meter-accurate coordinates. The application provides multiple accurate methods that **do not require Windows Location Services or GPS**:
+- **🔍 Smart City & Neighborhood Search (البحث الفوري بالاسم):**
+  - Search by any city, town, or neighborhood name (e.g. *سيهات، تاروت، صفوى، الهفوف، سار، النجف، الكاظمية*).
+  - Searches both the local offline Shia/Gulf database and OpenStreetMap text geocoding without accessing device GPS or location sensors.
+- **📋 Smart Paste from Google Maps (اللصق الذكي من خرائط جوجل):**
+  - Right-click your house or local mosque on Google Maps, copy the coordinates or link, and click **`📋 لصق من الحافظة`**. The app extracts the exact latitude and longitude with meter accuracy.
+- **🏙️ 50+ Pre-loaded Gulf & Middle Eastern City Presets:**
+  - Rich offline presets for Qatif and all its towns (Saihat, Tarout, Safwa, Awwamiyah, Qudaih, Jaroudiya, Umm Al-Hammam, Jish, Anak, Sanabis, Rabi'iya), Al-Ahsa (Hofuf, Mubarraz, Omran, Qarah, Rumaila, Taraf), Bahrain (Manama, Muharraq, Sitra, Saar, Diraz, Jidhafs, A'ali, Sanabis, Karzakan), Iraq (Najaf, Karbala, Kadhimiya, Samarra, Kufa, Basra, Baghdad), Kuwait, Oman, UAE, Lebanon, Iran, and diaspora centers.
+- **✍️ Manual Coordinates:** Full manual override for Latitude, Longitude, Timezone, and Elevation.
 - **Dual Calendar:** Localized Gregorian and Hijri dates with moon sighting manual offset (`-2` to `+2` days).
 - **Past & Future Date Browser:** Navigate with `< Prev Day`, `Today`, `Next Day >`, and Calendar Date Picker.
 
