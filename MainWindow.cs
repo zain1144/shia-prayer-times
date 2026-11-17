@@ -17,7 +17,9 @@ namespace ShiaPrayerTimes
         private DispatcherTimer _clockTimer;
 
         private DateTime _viewDate = DateTime.Today;
-        private PrayerTimesResult _currentTimesResult;
+        private PrayerTimesResult _viewTimesResult;
+        private PrayerTimesResult _todayTimesResult;
+        private DateTime _todayDate = DateTime.MinValue;
 
         // UI Header controls
         private TextBlock _gregorianDateText;
@@ -286,6 +288,7 @@ namespace ShiaPrayerTimes
                 {
                     _settings.Location = sel;
                     _settings.Save();
+                    _todayTimesResult = null;
                     RecalculateAndRefreshUI();
                 }
             };
@@ -682,10 +685,10 @@ namespace ShiaPrayerTimes
                 _datePicker.SelectedDate = _viewDate;
             }
 
-            // Astronomical calculation
+            // Astronomical calculation for viewed date
             var calcParams = _settings.ToCalculationParameters();
             var offsets = _settings.GetOffsets();
-            _currentTimesResult = PrayerCalculator.Calculate(
+            _viewTimesResult = PrayerCalculator.Calculate(
                 _viewDate,
                 _settings.Location.Latitude,
                 _settings.Location.Longitude,
@@ -694,11 +697,33 @@ namespace ShiaPrayerTimes
                 calcParams,
                 offsets);
 
-            // Rebuild Prayer Schedule List
+            // Ensure today's calculation is always ready for next prayer countdown, alarms, and tray
+            EnsureTodayTimesCalculated();
+
+            // Rebuild Prayer Schedule List for viewed date
             BuildPrayerScheduleCards(isDark, isAr);
 
-            // Update Countdown and highlights
+            // Update Countdown and highlights (always based on today!)
             UpdateCountdownAndHighlights();
+        }
+
+        private void EnsureTodayTimesCalculated()
+        {
+            DateTime today = DateTime.Today;
+            if (_todayTimesResult == null || _todayDate != today)
+            {
+                var calcParams = _settings.ToCalculationParameters();
+                var offsets = _settings.GetOffsets();
+                _todayTimesResult = PrayerCalculator.Calculate(
+                    today,
+                    _settings.Location.Latitude,
+                    _settings.Location.Longitude,
+                    _settings.Location.Timezone,
+                    _settings.Location.Elevation,
+                    calcParams,
+                    offsets);
+                _todayDate = today;
+            }
         }
 
         private void BuildPrayerScheduleCards(bool isDark, bool isAr)
@@ -719,7 +744,7 @@ namespace ShiaPrayerTimes
                 { "Maghrib", "🌆" }, { "Isha", "🌙" }, { "Midnight", "🌌" }
             };
 
-            var timesDict = _currentTimesResult.ToDictionary();
+            var timesDict = _viewTimesResult.ToDictionary();
 
             foreach (var ev in events)
             {
@@ -846,13 +871,19 @@ namespace ShiaPrayerTimes
 
         private void ClockTimer_Tick(object sender, EventArgs e)
         {
+            if (DateTime.Today != _todayDate)
+            {
+                _todayTimesResult = null;
+                EnsureTodayTimesCalculated();
+            }
             UpdateCountdownAndHighlights();
             CheckAndTriggerAlarms();
         }
 
         private void UpdateCountdownAndHighlights()
         {
-            if (_currentTimesResult == null) return;
+            EnsureTodayTimesCalculated();
+            if (_todayTimesResult == null) return;
 
             DateTime now = DateTime.Now;
             bool isAr = _settings.Language == "ar";
@@ -866,7 +897,7 @@ namespace ShiaPrayerTimes
                 { "Maghrib", "المغرب" }, { "Isha", "العشاء" }, { "Midnight", "منتصف الليل" }
             };
 
-            var timesDict = _currentTimesResult.ToDictionary();
+            var timesDict = _todayTimesResult.ToDictionary();
 
             string nextPrayerName = "";
             DateTime nextPrayerTime = DateTime.MaxValue;
@@ -909,7 +940,7 @@ namespace ShiaPrayerTimes
                 }
             }
 
-            // Update countdown card
+            // Update countdown card (always fixed to the true upcoming prayer of today!)
             if (!string.IsNullOrEmpty(nextPrayerName))
             {
                 TimeSpan diff = nextPrayerTime - now;
@@ -951,10 +982,12 @@ namespace ShiaPrayerTimes
                     _periodProgressBar.Value = 0;
                 }
 
+                // Tray tooltip & menu ALWAYS stay anchored to the true upcoming prayer & countdown!
                 _trayManager.UpdateTrayTooltipAndMenu(pNameAr, nextPrayerName, countdownStr);
             }
 
-            // Highlight items in prayer schedule list
+            // Highlight items in prayer schedule list ONLY when viewing today
+            bool isViewingToday = (_viewDate.Date == DateTime.Today);
             foreach (UIElement child in _prayerListPanel.Children)
             {
                 var border = child as Border;
@@ -962,14 +995,14 @@ namespace ShiaPrayerTimes
                 string ev = border.Tag as string;
                 if (string.IsNullOrEmpty(ev)) continue;
 
-                if (ev.Equals(nextPrayerName, StringComparison.OrdinalIgnoreCase))
+                if (isViewingToday && ev.Equals(nextPrayerName, StringComparison.OrdinalIgnoreCase))
                 {
                     // Next upcoming: Gold border highlight
                     border.BorderBrush = UIThemeHelper.GetBrush(UIThemeHelper.AccentGold);
                     border.BorderThickness = new Thickness(2);
                     border.Background = UIThemeHelper.GetBrush(isDark ? Color.FromRgb(45, 55, 72) : Color.FromRgb(254, 243, 199));
                 }
-                else if (ev.Equals(prevPrayerName, StringComparison.OrdinalIgnoreCase))
+                else if (isViewingToday && ev.Equals(prevPrayerName, StringComparison.OrdinalIgnoreCase))
                 {
                     // Current period: Emerald border highlight
                     border.BorderBrush = UIThemeHelper.GetBrush(UIThemeHelper.AccentEmerald);
@@ -987,10 +1020,10 @@ namespace ShiaPrayerTimes
 
         private void CheckAndTriggerAlarms()
         {
-            if (_currentTimesResult == null) return;
+            EnsureTodayTimesCalculated();
+            if (_todayTimesResult == null) return;
 
             DateTime now = DateTime.Now;
-            if (_viewDate.Date != now.Date) return;
 
             string[] events = new string[] { "Imsak", "Fajr", "Sunrise", "Dhuhr", "Asr", "Sunset", "Maghrib", "Isha", "Midnight" };
             Dictionary<string, string> namesAr = new Dictionary<string, string>
@@ -1000,7 +1033,7 @@ namespace ShiaPrayerTimes
                 { "Maghrib", "المغرب" }, { "Isha", "العشاء" }, { "Midnight", "منتصف الليل" }
             };
 
-            var timesDict = _currentTimesResult.ToDictionary();
+            var timesDict = _todayTimesResult.ToDictionary();
 
             foreach (var ev in events)
             {
@@ -1046,6 +1079,7 @@ namespace ShiaPrayerTimes
             var dlg = new SettingsWindow(_settings, _audioNotifier, () =>
             {
                 RefreshThemeAndLanguage();
+                _todayTimesResult = null;
                 RecalculateAndRefreshUI();
             });
             dlg.Owner = this;

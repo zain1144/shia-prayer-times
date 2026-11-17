@@ -19,3 +19,4 @@
 adhan_tone.wav | نغمة الأذان الافتراضية |
 chime.wav | نغمة هادئة للتنبيه | Reminder
 almusawi_adhan.mp3 | أذان السيد هاني الموسوي | Fajr,Dhuhr,Maghrib
+تكبير قصير.mp3 | تكبير قصير
