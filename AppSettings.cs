@@ -202,12 +202,61 @@ namespace ShiaPrayerTimes
             if (AdhanLibrary.Count == 0)
             {
                 string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                string tonePath = Path.Combine(baseDir, "Audio", "adhan_tone.wav");
+                if (!File.Exists(tonePath)) tonePath = Path.Combine(GetConfigDirectory(), "Audio", "adhan_tone.wav");
+
+                string chimePath = Path.Combine(baseDir, "Audio", "chime.wav");
+                if (!File.Exists(chimePath)) chimePath = Path.Combine(GetConfigDirectory(), "Audio", "chime.wav");
+
                 AdhanLibrary.Add(new AdhanSound("default", "الأذان الافتراضي (Default)", "", true));
-                AdhanLibrary.Add(new AdhanSound("tone", "نغمة الأذان (Tone)", Path.Combine(baseDir, "Audio", "adhan_tone.wav"), true));
-                AdhanLibrary.Add(new AdhanSound("chime", "نغمة هادئة (Chime)", Path.Combine(baseDir, "Audio", "chime.wav"), true));
+                AdhanLibrary.Add(new AdhanSound("tone", "نغمة الأذان (Tone)", tonePath, true));
+                AdhanLibrary.Add(new AdhanSound("chime", "نغمة هادئة (Chime)", chimePath, true));
                 AdhanLibrary.Add(new AdhanSound("karbala", "أذان العتبة الحسينية - كربلاء", "", false));
                 AdhanLibrary.Add(new AdhanSound("najaf", "أذان العتبة العلوية - النجف", "", false));
                 AdhanLibrary.Add(new AdhanSound("fajr", "أذان الفجر المخصوص (Fajr)", "", false));
+            }
+        }
+
+        public static void ExtractEmbeddedAudioDefaults()
+        {
+            try
+            {
+                string targetDir = Path.Combine(GetConfigDirectory(), "Audio");
+                if (!Directory.Exists(targetDir))
+                {
+                    Directory.CreateDirectory(targetDir);
+                }
+
+                var asm = System.Reflection.Assembly.GetExecutingAssembly();
+                string[] resources = { "Audio.adhan_tone.wav", "Audio.chime.wav" };
+                string[] fileNames = { "adhan_tone.wav", "chime.wav" };
+
+                for (int i = 0; i < resources.Length; i++)
+                {
+                    string dest = Path.Combine(targetDir, fileNames[i]);
+                    if (!File.Exists(dest) || new FileInfo(dest).Length == 0)
+                    {
+                        using (var stream = asm.GetManifestResourceStream(resources[i]))
+                        {
+                            if (stream != null)
+                            {
+                                using (var fs = new FileStream(dest, FileMode.Create, FileAccess.Write))
+                                {
+                                    byte[] buffer = new byte[8192];
+                                    int read;
+                                    while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
+                                    {
+                                        fs.Write(buffer, 0, read);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("ExtractEmbeddedAudioDefaults error: " + ex.Message);
             }
         }
 
@@ -337,6 +386,8 @@ namespace ShiaPrayerTimes
 
         public void EnsureDefaults()
         {
+            ExtractEmbeddedAudioDefaults();
+
             if (Location == null) Location = new LocationPreset("القطيف - المملكة العربية السعودية (Qatif)", 26.5577, 50.0081, 3.0, 0);
             if (Presets == null || Presets.Count < 20)
             {
@@ -483,9 +534,22 @@ namespace ShiaPrayerTimes
             {
                 foreach (var s in AdhanLibrary)
                 {
-                    if (s.Id == soundId && !string.IsNullOrEmpty(s.FilePath) && File.Exists(s.FilePath))
+                    if (s.Id == soundId)
                     {
-                        return s.FilePath;
+                        if (!string.IsNullOrEmpty(s.FilePath) && File.Exists(s.FilePath))
+                        {
+                            return s.FilePath;
+                        }
+                        if (s.Id == "tone")
+                        {
+                            string appTone = Path.Combine(GetConfigDirectory(), "Audio", "adhan_tone.wav");
+                            if (File.Exists(appTone)) return appTone;
+                        }
+                        else if (s.Id == "chime")
+                        {
+                            string appChime = Path.Combine(GetConfigDirectory(), "Audio", "chime.wav");
+                            if (File.Exists(appChime)) return appChime;
+                        }
                     }
                 }
             }
@@ -504,8 +568,14 @@ namespace ShiaPrayerTimes
             string defTone = Path.Combine(baseDir, "Audio", "adhan_tone.wav");
             if (File.Exists(defTone)) return defTone;
 
+            string cfgTone = Path.Combine(GetConfigDirectory(), "Audio", "adhan_tone.wav");
+            if (File.Exists(cfgTone)) return cfgTone;
+
             string defChime = Path.Combine(baseDir, "Audio", "chime.wav");
             if (File.Exists(defChime)) return defChime;
+
+            string cfgChime = Path.Combine(GetConfigDirectory(), "Audio", "chime.wav");
+            if (File.Exists(cfgChime)) return cfgChime;
 
             return "";
         }

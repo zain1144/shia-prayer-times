@@ -56,6 +56,11 @@ namespace ShiaPrayerTimes
             string chimeFile = Path.Combine(appDir, "Audio", "chime.wav");
             if (!File.Exists(chimeFile))
             {
+                string cfgChime = Path.Combine(AppSettings.GetConfigDirectory(), "Audio", "chime.wav");
+                if (File.Exists(cfgChime)) chimeFile = cfgChime;
+            }
+            if (!File.Exists(chimeFile))
+            {
                 chimeFile = @"C:\Windows\Media\Windows Notify.wav";
                 if (!File.Exists(chimeFile)) chimeFile = @"C:\Windows\Media\chimes.wav";
             }
