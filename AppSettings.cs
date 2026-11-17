@@ -114,6 +114,9 @@ namespace ShiaPrayerTimes
         public string DefaultAdhanPath { get; set; }
         public string DefaultFajrAdhanPath { get; set; }
 
+        public int NotificationDurationSeconds { get; set; } // 0 = persistent, 5, 10, 15, 30, 60
+        public string NotificationStyle { get; set; }        // "CustomToast", "WindowsNative"
+
         public List<AdhanSound> AdhanLibrary { get; set; }
         public Dictionary<string, PrayerEventConfig> Prayers { get; set; }
 
@@ -125,6 +128,8 @@ namespace ShiaPrayerTimes
             HijriOffset = 0;
             AutoStartWithWindows = false;
             MinimizeToTrayOnClose = true;
+            NotificationDurationSeconds = 10;
+            NotificationStyle = "CustomToast";
 
             Location = new LocationPreset("القطيف - المملكة العربية السعودية (Qatif)", 26.5577, 50.0081, 3.0, 0);
 
@@ -341,6 +346,9 @@ namespace ShiaPrayerTimes
                     else if (s.Id == "fajr" && s.Name.Contains("Fajr Distinct")) s.Name = "أذان الفجر المخصوص (Fajr)";
                 }
             }
+
+            if (NotificationDurationSeconds < 0) NotificationDurationSeconds = 10;
+            if (string.IsNullOrEmpty(NotificationStyle)) NotificationStyle = "CustomToast";
 
             if (Prayers == null) Prayers = new Dictionary<string, PrayerEventConfig>(StringComparer.OrdinalIgnoreCase);
 

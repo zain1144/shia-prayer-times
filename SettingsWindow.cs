@@ -58,6 +58,8 @@ namespace ShiaPrayerTimes
         private System.Windows.Controls.CheckBox _closeToTrayCheck;
         private System.Windows.Controls.ComboBox _themeCombo;
         private System.Windows.Controls.ComboBox _langCombo;
+        private System.Windows.Controls.ComboBox _notifStyleCombo;
+        private System.Windows.Controls.ComboBox _notifDurationCombo;
 
         public SettingsWindow(AppSettings settings, AudioNotifier audioNotifier, Action onSettingsSaved)
         {
@@ -1355,6 +1357,20 @@ namespace ShiaPrayerTimes
             };
 
             // 1. Visual Only
+            Action syncNotifParams = () =>
+            {
+                if (_notifStyleCombo != null)
+                {
+                    var selStyle = _notifStyleCombo.SelectedItem as ComboBoxItem;
+                    if (selStyle != null) _settings.NotificationStyle = selStyle.Tag as string;
+                }
+                if (_notifDurationCombo != null)
+                {
+                    var selDur = _notifDurationCombo.SelectedItem as ComboBoxItem;
+                    if (selDur != null) _settings.NotificationDurationSeconds = (int)selDur.Tag;
+                }
+            };
+
             var btnVisual = new System.Windows.Controls.Button
             {
                 Content = isAr ? "👁️ إشعار مرئي فقط (Visual Toast)" : "👁️ Visual Toast Only",
@@ -1369,6 +1385,7 @@ namespace ShiaPrayerTimes
             };
             btnVisual.Click += (s, e) =>
             {
+                syncNotifParams();
                 _audioNotifier.TestVisualNotification(isAr ? "الظهر" : "Dhuhr", "Dhuhr", isAr ? "12:00 م" : "12:00 PM");
                 testStatusLabel.Text = isAr ? "✓ تم إرسال إشعار مرئي فقط إلى زاوية الشاشة بنجاح!" : "✓ Visual toast notification sent successfully!";
                 testStatusLabel.Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentEmerald);
@@ -1390,6 +1407,7 @@ namespace ShiaPrayerTimes
             };
             btnChime.Click += (s, e) =>
             {
+                syncNotifParams();
                 _audioNotifier.TestChimeNotification(isAr ? "الظهر" : "Dhuhr", "Dhuhr", isAr ? "12:00 م" : "12:00 PM");
                 testStatusLabel.Text = isAr ? "✓ تم إرسال إشعار نغمة التنبيه وتشغيل الصوت بنجاح!" : "✓ Chime notification and tone sent successfully!";
                 testStatusLabel.Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentEmerald);
@@ -1411,6 +1429,7 @@ namespace ShiaPrayerTimes
             };
             btnAdhan.Click += (s, e) =>
             {
+                syncNotifParams();
                 _audioNotifier.TestAdhanNotification("Dhuhr", isAr ? "الظهر" : "Dhuhr", isAr ? "12:00 م" : "12:00 PM", "default");
                 testStatusLabel.Text = isAr ? "✓ جاري تشغيل الأذان وإرسال إشعار الصلاة! (يمكنك إيقافه بالزر الأحمر)" : "✓ Playing Adhan and notification banner! (You can stop it with the red button)";
                 testStatusLabel.Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentEmerald);
@@ -1432,6 +1451,7 @@ namespace ShiaPrayerTimes
             };
             btnReminder.Click += (s, e) =>
             {
+                syncNotifParams();
                 _audioNotifier.TestReminderNotification(isAr ? "الظهر" : "Dhuhr", "Dhuhr", 10);
                 testStatusLabel.Text = isAr ? "✓ تم إرسال إشعار التذكير المسبق (قبل 10 دقائق) بنجاح!" : "✓ Pre-prayer reminder notification sent successfully!";
                 testStatusLabel.Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentEmerald);
@@ -1440,6 +1460,53 @@ namespace ShiaPrayerTimes
 
             testCardStack.Children.Add(testBtnWrap);
             testCardStack.Children.Add(testStatusLabel);
+
+            // Notification Customization inside Test Card
+            var notifOptionsGrid = new Grid { Margin = new Thickness(0, 10, 0, 4) };
+            notifOptionsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            notifOptionsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            var nStyleStack = new StackPanel { Margin = new Thickness(0, 0, 10, 0) };
+            nStyleStack.Children.Add(UIThemeHelper.CreateLabel(isAr ? "نوع وشكل الإشعار المرئي:" : "Notification Visual Style:", isDark, false, 12));
+            _notifStyleCombo = new System.Windows.Controls.ComboBox { Height = 32, Margin = new Thickness(0, 4, 0, 0) };
+            UIThemeHelper.StyleComboBox(_notifStyleCombo, isDark);
+            _notifStyleCombo.Items.Add(new ComboBoxItem { Content = isAr ? "نافذة إشعار عائمة مخصصة (Custom Toast)" : "Custom Floating Toast Banner", Tag = "CustomToast" });
+            _notifStyleCombo.Items.Add(new ComboBoxItem { Content = isAr ? "إشعار نظام ويندوز الافتراضي (Windows Native)" : "Windows Default Notification", Tag = "WindowsNative" });
+            _notifStyleCombo.SelectedIndex = (_settings.NotificationStyle == "WindowsNative") ? 1 : 0;
+            nStyleStack.Children.Add(_notifStyleCombo);
+            Grid.SetColumn(nStyleStack, 0);
+            notifOptionsGrid.Children.Add(nStyleStack);
+
+            var nDurStack = new StackPanel { Margin = new Thickness(10, 0, 0, 0) };
+            nDurStack.Children.Add(UIThemeHelper.CreateLabel(isAr ? "مدة بقاء الإشعار على الشاشة:" : "Display Duration Before Dismissal:", isDark, false, 12));
+            _notifDurationCombo = new System.Windows.Controls.ComboBox { Height = 32, Margin = new Thickness(0, 4, 0, 0) };
+            UIThemeHelper.StyleComboBox(_notifDurationCombo, isDark);
+            _notifDurationCombo.Items.Add(new ComboBoxItem { Content = isAr ? "5 ثوانٍ" : "5 Seconds", Tag = 5 });
+            _notifDurationCombo.Items.Add(new ComboBoxItem { Content = isAr ? "10 ثوانٍ (الافتراضي)" : "10 Seconds (Default)", Tag = 10 });
+            _notifDurationCombo.Items.Add(new ComboBoxItem { Content = isAr ? "15 ثانية" : "15 Seconds", Tag = 15 });
+            _notifDurationCombo.Items.Add(new ComboBoxItem { Content = isAr ? "20 ثانية" : "20 Seconds", Tag = 20 });
+            _notifDurationCombo.Items.Add(new ComboBoxItem { Content = isAr ? "30 ثانية" : "30 Seconds", Tag = 30 });
+            _notifDurationCombo.Items.Add(new ComboBoxItem { Content = isAr ? "60 ثانية (دقيقة كاملة)" : "60 Seconds (1 Minute)", Tag = 60 });
+            _notifDurationCombo.Items.Add(new ComboBoxItem { Content = isAr ? "دائم (حتى الإغلاق بالضغط عليه)" : "Persistent (Until Clicked)", Tag = 0 });
+
+            int durIdx = 1;
+            int curDur = _settings.NotificationDurationSeconds;
+            for (int di = 0; di < _notifDurationCombo.Items.Count; di++)
+            {
+                var ci = _notifDurationCombo.Items[di] as ComboBoxItem;
+                if (ci != null && (int)ci.Tag == curDur)
+                {
+                    durIdx = di;
+                    break;
+                }
+            }
+            _notifDurationCombo.SelectedIndex = durIdx;
+            nDurStack.Children.Add(_notifDurationCombo);
+            Grid.SetColumn(nDurStack, 1);
+            notifOptionsGrid.Children.Add(nDurStack);
+
+            testCardStack.Children.Add(notifOptionsGrid);
+
             testCard.Child = testCardStack;
             panel.Children.Add(testCard);
 
@@ -1858,6 +1925,18 @@ namespace ShiaPrayerTimes
 
             var selLa = _langCombo.SelectedItem as ComboBoxItem;
             _settings.Language = selLa != null ? (selLa.Tag as string) : "ar";
+
+            if (_notifStyleCombo != null)
+            {
+                var selStyle = _notifStyleCombo.SelectedItem as ComboBoxItem;
+                _settings.NotificationStyle = selStyle != null ? (selStyle.Tag as string) : "CustomToast";
+            }
+
+            if (_notifDurationCombo != null)
+            {
+                var selDur = _notifDurationCombo.SelectedItem as ComboBoxItem;
+                _settings.NotificationDurationSeconds = selDur != null ? (int)selDur.Tag : 10;
+            }
 
             _settings.Save();
             _audioNotifier.UpdateSettings(_settings);

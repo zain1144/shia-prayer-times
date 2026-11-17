@@ -193,19 +193,53 @@ namespace ShiaPrayerTimes
             }
         }
 
+        public void ShowNotification(string title, string body, string iconSymbol = "🕌")
+        {
+            bool isDark = _settings.Theme == "Dark";
+            bool isAr = _settings.Language == "ar";
+            int duration = _settings.NotificationDurationSeconds;
+            string style = _settings.NotificationStyle ?? "CustomToast";
+
+            if (style.Equals("WindowsNative", StringComparison.OrdinalIgnoreCase))
+            {
+                if (_notifyIcon != null)
+                {
+                    int ms = duration <= 0 ? 30000 : Math.Max(5000, duration * 1000);
+                    _notifyIcon.ShowBalloonTip(ms, title, body, ToolTipIcon.Info);
+                }
+            }
+            else
+            {
+                ToastNotificationWindow.ShowToast(title, body, duration, isDark, isAr, iconSymbol, () =>
+                {
+                    try
+                    {
+                        if (System.Windows.Application.Current != null && System.Windows.Application.Current.MainWindow != null)
+                        {
+                            var mw = System.Windows.Application.Current.MainWindow;
+                            if (mw.WindowState == System.Windows.WindowState.Minimized)
+                            {
+                                mw.WindowState = System.Windows.WindowState.Normal;
+                            }
+                            mw.Show();
+                            mw.Activate();
+                        }
+                    }
+                    catch { }
+                });
+            }
+        }
+
         public void TriggerPrayerNotification(string prayerNameAr, string prayerNameEn, string timeStr, string mode, string soundId, string customAudioPath)
         {
+            if (mode == "Off") return;
+
             string title = _settings.Language == "ar" ? "حان الآن موعد الصلاة" : "Prayer Time";
             string body = _settings.Language == "ar"
                 ? string.Format("حان الآن موعد صلاة {0} ({1})", prayerNameAr, timeStr)
                 : string.Format("It is now time for {0} ({1})", prayerNameEn, timeStr);
 
-            if (mode == "Off") return;
-
-            if (_notifyIcon != null)
-            {
-                _notifyIcon.ShowBalloonTip(10000, title, body, ToolTipIcon.Info);
-            }
+            ShowNotification(title, body, "🕌");
 
             if (mode == "Chime")
             {
@@ -224,10 +258,7 @@ namespace ShiaPrayerTimes
                 ? string.Format("اقترب موعد صلاة {0} بعد {1} دقيقة", prayerNameAr, minutesBefore)
                 : string.Format("{0} prayer will be in {1} minutes", prayerNameEn, minutesBefore);
 
-            if (_notifyIcon != null)
-            {
-                _notifyIcon.ShowBalloonTip(7000, title, body, ToolTipIcon.Info);
-            }
+            ShowNotification(title, body, "⏰");
 
             if (reminderSoundId != "silent" && reminderSoundId != "off" && reminderSoundId != "Off")
             {
@@ -242,10 +273,7 @@ namespace ShiaPrayerTimes
                 ? string.Format("حان الآن موعد صلاة {0} ({1})", prayerNameAr, timeStr)
                 : string.Format("It is now time for {0} ({1})", prayerNameEn, timeStr);
 
-            if (_notifyIcon != null)
-            {
-                _notifyIcon.ShowBalloonTip(7000, title, body, ToolTipIcon.Info);
-            }
+            ShowNotification(title, body, "👁️");
         }
 
         public void TestChimeNotification(string prayerNameAr = "الظهر", string prayerNameEn = "Dhuhr", string timeStr = "12:00 م")
@@ -255,10 +283,7 @@ namespace ShiaPrayerTimes
                 ? string.Format("حان الآن موعد صلاة {0} ({1})", prayerNameAr, timeStr)
                 : string.Format("It is now time for {0} ({1})", prayerNameEn, timeStr);
 
-            if (_notifyIcon != null)
-            {
-                _notifyIcon.ShowBalloonTip(7000, title, body, ToolTipIcon.Info);
-            }
+            ShowNotification(title, body, "🎵");
             PlayChime();
         }
 
@@ -269,10 +294,7 @@ namespace ShiaPrayerTimes
                 ? string.Format("حان الآن موعد أذان صلاة {0} ({1})", prayerNameAr, timeStr)
                 : string.Format("It is now time for {0} Adhan ({1})", prayerNameEn, timeStr);
 
-            if (_notifyIcon != null)
-            {
-                _notifyIcon.ShowBalloonTip(10000, title, body, ToolTipIcon.Info);
-            }
+            ShowNotification(title, body, "📢");
             PlayAdhan(prayerNameEn, soundId, "");
         }
 
@@ -283,10 +305,7 @@ namespace ShiaPrayerTimes
                 ? string.Format("اقترب موعد صلاة {0} بعد {1} دقائق", prayerNameAr, minutesBefore)
                 : string.Format("{0} prayer will be in {1} minutes", prayerNameEn, minutesBefore);
 
-            if (_notifyIcon != null)
-            {
-                _notifyIcon.ShowBalloonTip(7000, title, body, ToolTipIcon.Info);
-            }
+            ShowNotification(title, body, "⏳");
 
             if (reminderSoundId != "silent" && reminderSoundId != "off" && reminderSoundId != "Off")
             {

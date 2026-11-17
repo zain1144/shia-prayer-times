@@ -17,7 +17,7 @@ if not exist %ICON% (
     set ICON="app.ico"
 )
 
-%CSC% /target:winexe /win32icon:%ICON% /out:"ShiaPrayerTimes.exe" /r:System.dll /r:System.Core.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll /r:%DOTNET_DIR%\WPF\PresentationCore.dll /r:%DOTNET_DIR%\WPF\PresentationFramework.dll /r:%DOTNET_DIR%\WPF\WindowsBase.dll /r:%DOTNET_DIR%\System.Xaml.dll /r:%DOTNET_DIR%\System.Web.Extensions.dll /r:%DOTNET_DIR%\System.Device.dll /r:%DOTNET_DIR%\Microsoft.VisualBasic.dll UIThemeHelper.cs PrayerCalculator.cs LocationDetector.cs HijriCalendar.cs AppSettings.cs AudioNotifier.cs TrayManager.cs SettingsWindow.cs MainWindow.cs App.cs
+%CSC% /target:winexe /win32icon:%ICON% /out:"ShiaPrayerTimes.exe" /r:System.dll /r:System.Core.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll /r:%DOTNET_DIR%\WPF\PresentationCore.dll /r:%DOTNET_DIR%\WPF\PresentationFramework.dll /r:%DOTNET_DIR%\WPF\WindowsBase.dll /r:%DOTNET_DIR%\System.Xaml.dll /r:%DOTNET_DIR%\System.Web.Extensions.dll /r:%DOTNET_DIR%\System.Device.dll /r:%DOTNET_DIR%\Microsoft.VisualBasic.dll UIThemeHelper.cs PrayerCalculator.cs LocationDetector.cs HijriCalendar.cs AppSettings.cs ToastNotificationWindow.cs AudioNotifier.cs TrayManager.cs SettingsWindow.cs MainWindow.cs App.cs
 
 if %ERRORLEVEL% EQU 0 (
     echo.
