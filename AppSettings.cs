@@ -89,6 +89,20 @@ namespace ShiaPrayerTimes
         }
     }
 
+    public class EmbeddedSoundEntry
+    {
+        public string FileName { get; set; }
+        public string DisplayName { get; set; }
+        public string DefaultPrayer { get; set; }
+
+        public EmbeddedSoundEntry(string fileName, string displayName, string defaultPrayer)
+        {
+            FileName = fileName;
+            DisplayName = displayName;
+            DefaultPrayer = defaultPrayer;
+        }
+    }
+
     public class AppSettings
     {
         public string Language { get; set; }
@@ -170,6 +184,7 @@ namespace ShiaPrayerTimes
             DefaultFajrAdhanPath = "";
 
             InitDefaultSounds();
+            EnsureEmbeddedSoundsInLibrary();
 
             if (AdhanLibrary != null)
             {
@@ -217,6 +232,63 @@ namespace ShiaPrayerTimes
             }
         }
 
+        public static Dictionary<string, EmbeddedSoundEntry> LoadEmbeddedSoundConfigs(System.Reflection.Assembly asm)
+        {
+            var dict = new Dictionary<string, EmbeddedSoundEntry>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                string text = null;
+                string localTxt = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Audio", "sounds.txt");
+                if (File.Exists(localTxt))
+                {
+                    text = File.ReadAllText(localTxt, System.Text.Encoding.UTF8);
+                }
+                else if (asm != null)
+                {
+                    using (var s = asm.GetManifestResourceStream("Audio.sounds.txt"))
+                    {
+                        if (s != null)
+                        {
+                            using (var reader = new StreamReader(s, System.Text.Encoding.UTF8))
+                            {
+                                text = reader.ReadToEnd();
+                            }
+                        }
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(text))
+                {
+                    using (var reader = new StringReader(text))
+                    {
+                        string line;
+                        while ((line = reader.ReadLine()) != null)
+                        {
+                            line = line.Trim();
+                            if (string.IsNullOrEmpty(line) || line.StartsWith("#")) continue;
+
+                            string[] parts = line.Split('|');
+                            if (parts.Length >= 2)
+                            {
+                                string fn = parts[0].Trim();
+                                string name = parts[1].Trim();
+                                string prayer = parts.Length > 2 ? parts[2].Trim() : "";
+                                if (!string.IsNullOrEmpty(fn) && !string.IsNullOrEmpty(name))
+                                {
+                                    dict[fn] = new EmbeddedSoundEntry(fn, name, prayer);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("LoadEmbeddedSoundConfigs error: " + ex.Message);
+            }
+            return dict;
+        }
+
         public static void ExtractEmbeddedAudioDefaults()
         {
             try
@@ -228,25 +300,29 @@ namespace ShiaPrayerTimes
                 }
 
                 var asm = System.Reflection.Assembly.GetExecutingAssembly();
-                string[] resources = { "Audio.adhan_tone.wav", "Audio.chime.wav" };
-                string[] fileNames = { "adhan_tone.wav", "chime.wav" };
+                string[] resources = asm.GetManifestResourceNames();
 
-                for (int i = 0; i < resources.Length; i++)
+                foreach (string res in resources)
                 {
-                    string dest = Path.Combine(targetDir, fileNames[i]);
-                    if (!File.Exists(dest) || new FileInfo(dest).Length == 0)
+                    if (res.StartsWith("Audio.") && !res.EndsWith(".txt", StringComparison.OrdinalIgnoreCase))
                     {
-                        using (var stream = asm.GetManifestResourceStream(resources[i]))
+                        string fileName = res.Substring("Audio.".Length);
+                        string dest = Path.Combine(targetDir, fileName);
+
+                        if (!File.Exists(dest) || new FileInfo(dest).Length == 0)
                         {
-                            if (stream != null)
+                            using (var stream = asm.GetManifestResourceStream(res))
                             {
-                                using (var fs = new FileStream(dest, FileMode.Create, FileAccess.Write))
+                                if (stream != null)
                                 {
-                                    byte[] buffer = new byte[8192];
-                                    int read;
-                                    while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
+                                    using (var fs = new FileStream(dest, FileMode.Create, FileAccess.Write))
                                     {
-                                        fs.Write(buffer, 0, read);
+                                        byte[] buffer = new byte[8192];
+                                        int read;
+                                        while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
+                                        {
+                                            fs.Write(buffer, 0, read);
+                                        }
                                     }
                                 }
                             }
@@ -257,6 +333,101 @@ namespace ShiaPrayerTimes
             catch (Exception ex)
             {
                 Console.WriteLine("ExtractEmbeddedAudioDefaults error: " + ex.Message);
+            }
+        }
+
+        public void EnsureEmbeddedSoundsInLibrary()
+        {
+            try
+            {
+                if (AdhanLibrary == null) AdhanLibrary = new List<AdhanSound>();
+                string targetDir = Path.Combine(GetConfigDirectory(), "Audio");
+                string baseAudio = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Audio");
+
+                var asm = System.Reflection.Assembly.GetExecutingAssembly();
+                string[] resources = asm.GetManifestResourceNames();
+                var configs = LoadEmbeddedSoundConfigs(asm);
+
+                foreach (string res in resources)
+                {
+                    if (res.StartsWith("Audio.") && !res.EndsWith(".txt", StringComparison.OrdinalIgnoreCase))
+                    {
+                        string fileName = res.Substring("Audio.".Length);
+                        string rawId = Path.GetFileNameWithoutExtension(fileName).ToLowerInvariant().Replace(" ", "_");
+
+                        string filePath = Path.Combine(targetDir, fileName);
+                        if (!File.Exists(filePath))
+                        {
+                            string localPath = Path.Combine(baseAudio, fileName);
+                            if (File.Exists(localPath)) filePath = localPath;
+                        }
+
+                        string displayName = Path.GetFileNameWithoutExtension(fileName);
+                        string defaultPrayer = "";
+
+                        if (configs.ContainsKey(fileName))
+                        {
+                            displayName = configs[fileName].DisplayName;
+                            defaultPrayer = configs[fileName].DefaultPrayer;
+                        }
+                        else if (rawId == "adhan_tone" || rawId == "tone")
+                        {
+                            displayName = "نغمة الأذان الافتراضية";
+                        }
+                        else if (rawId == "chime")
+                        {
+                            displayName = "نغمة هادئة (Chime)";
+                        }
+
+                        var existing = AdhanLibrary.Find(x =>
+                            x.Id == rawId ||
+                            (x.FilePath != null && x.FilePath.EndsWith(fileName, StringComparison.OrdinalIgnoreCase)));
+
+                        if (existing == null)
+                        {
+                            AdhanLibrary.Add(new AdhanSound(rawId, displayName, filePath, true));
+                        }
+                        else
+                        {
+                            existing.FilePath = filePath;
+                            if (!string.IsNullOrEmpty(displayName) && (string.IsNullOrEmpty(existing.Name) || existing.IsBuiltIn))
+                            {
+                                existing.Name = displayName;
+                            }
+                        }
+
+                        if (!string.IsNullOrEmpty(defaultPrayer) && Prayers != null)
+                        {
+                            string[] prayers = defaultPrayer.Split(new char[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                            foreach (var p in prayers)
+                            {
+                                if (Prayers.ContainsKey(p))
+                                {
+                                    var prayerCfg = Prayers[p];
+                                    if (prayerCfg.SoundId == "default" || prayerCfg.SoundId == "chime" || string.IsNullOrEmpty(prayerCfg.SoundId))
+                                    {
+                                        prayerCfg.SoundId = rawId;
+                                        if (prayerCfg.NotificationMode != "Off") prayerCfg.NotificationMode = "Adhan";
+                                    }
+                                }
+                                else if (p.Equals("Reminder", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    foreach (var kvp in Prayers)
+                                    {
+                                        if (kvp.Value.ReminderSoundId == "chime" || string.IsNullOrEmpty(kvp.Value.ReminderSoundId))
+                                        {
+                                            kvp.Value.ReminderSoundId = rawId;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("EnsureEmbeddedSoundsInLibrary error: " + ex.Message);
             }
         }
 
@@ -289,6 +460,7 @@ namespace ShiaPrayerTimes
                     if (settings != null)
                     {
                         settings.EnsureDefaults();
+                        settings.Save();
                         return settings;
                     }
                 }
@@ -394,6 +566,7 @@ namespace ShiaPrayerTimes
                 Presets = GetDefaultLocationPresets();
             }
             InitDefaultSounds();
+            EnsureEmbeddedSoundsInLibrary();
 
             if (AdhanLibrary != null)
             {
