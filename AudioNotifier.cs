@@ -215,31 +215,23 @@ namespace ShiaPrayerTimes
             }
             else
             {
-                ToastNotificationWindow.ShowToast(title, body, duration, isDark, isAr, iconSymbol, position, size, cLeft, cTop,
-                    (newLeft, newTop) =>
+                ToastNotificationWindow.ShowToast(title, body, duration, isDark, isAr, iconSymbol, position, size, cLeft, cTop, false, null, () =>
+                {
+                    try
                     {
-                        _settings.CustomToastLeft = newLeft;
-                        _settings.CustomToastTop = newTop;
-                        _settings.ToastPosition = "Custom";
-                        _settings.Save();
-                    },
-                    () =>
-                    {
-                        try
+                        if (System.Windows.Application.Current != null && System.Windows.Application.Current.MainWindow != null)
                         {
-                            if (System.Windows.Application.Current != null && System.Windows.Application.Current.MainWindow != null)
+                            var mw = System.Windows.Application.Current.MainWindow;
+                            if (mw.WindowState == System.Windows.WindowState.Minimized)
                             {
-                                var mw = System.Windows.Application.Current.MainWindow;
-                                if (mw.WindowState == System.Windows.WindowState.Minimized)
-                                {
-                                    mw.WindowState = System.Windows.WindowState.Normal;
-                                }
-                                mw.Show();
-                                mw.Activate();
+                                mw.WindowState = System.Windows.WindowState.Normal;
                             }
+                            mw.Show();
+                            mw.Activate();
                         }
-                        catch { }
-                    });
+                    }
+                    catch { }
+                });
             }
         }
 

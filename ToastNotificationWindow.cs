@@ -27,19 +27,25 @@ namespace ShiaPrayerTimes
         private string _size = "Medium";
         private double _customLeft = -1;
         private double _customTop = -1;
+        private bool _isCalibration = false;
         private Action<double, double> _onPositionDragged = null;
 
         public static void ShowToast(string title, string message, int durationSeconds, bool isDark, bool isAr, string iconSymbol = "🕌", Action onClick = null)
         {
-            ShowToast(title, message, durationSeconds, isDark, isAr, iconSymbol, "BottomRight", "Medium", -1, -1, null, onClick);
+            ShowToast(title, message, durationSeconds, isDark, isAr, iconSymbol, "BottomRight", "Medium", -1, -1, false, null, onClick);
         }
 
         public static void ShowToast(string title, string message, int durationSeconds, bool isDark, bool isAr, string iconSymbol, string position, string size, Action onClick = null)
         {
-            ShowToast(title, message, durationSeconds, isDark, isAr, iconSymbol, position, size, -1, -1, null, onClick);
+            ShowToast(title, message, durationSeconds, isDark, isAr, iconSymbol, position, size, -1, -1, false, null, onClick);
         }
 
         public static void ShowToast(string title, string message, int durationSeconds, bool isDark, bool isAr, string iconSymbol, string position, string size, double customLeft, double customTop, Action<double, double> onPositionDragged, Action onClick = null)
+        {
+            ShowToast(title, message, durationSeconds, isDark, isAr, iconSymbol, position, size, customLeft, customTop, false, onPositionDragged, onClick);
+        }
+
+        public static void ShowToast(string title, string message, int durationSeconds, bool isDark, bool isAr, string iconSymbol, string position, string size, double customLeft, double customTop, bool isCalibration, Action<double, double> onPositionDragged, Action onClick = null)
         {
             try
             {
@@ -53,7 +59,7 @@ namespace ShiaPrayerTimes
                         _activeToast = null;
                     }
 
-                    var toast = new ToastNotificationWindow(title, message, durationSeconds, isDark, isAr, iconSymbol, position, size, customLeft, customTop, onPositionDragged, onClick);
+                    var toast = new ToastNotificationWindow(title, message, durationSeconds, isDark, isAr, iconSymbol, position, size, customLeft, customTop, isCalibration, onPositionDragged, onClick);
                     _activeToast = toast;
                     toast.Show();
                 }));
@@ -64,23 +70,41 @@ namespace ShiaPrayerTimes
             }
         }
 
+        public static void ShowCalibrationToast(bool isDark, bool isAr, string size, double currentLeft, double currentTop, Action<double, double> onPositionSaved)
+        {
+            string title = isAr ? "🎯 تحديد موضع الإشعار (Drag & Drop)" : "🎯 Set Notification Position (Drag & Drop)";
+            string message = isAr
+                ? "اسحب هذه النافذة بالماوس إلى أي مكان تريده على شاشتك، ثم اضغط على زر [✓ تثبيت هذا الموضع وحفظه]."
+                : "Drag this window to any position on your screen, then click [✓ Confirm & Save Position].";
+
+            string position = (currentLeft >= 0 && currentTop >= 0) ? "Custom" : "BottomRight";
+
+            ShowToast(title, message, 0, isDark, isAr, "📍", position, size, currentLeft, currentTop, true, onPositionSaved, null);
+        }
+
         public ToastNotificationWindow(string title, string message, int durationSeconds, bool isDark, bool isAr, string iconSymbol, Action onClick)
-            : this(title, message, durationSeconds, isDark, isAr, iconSymbol, "BottomRight", "Medium", -1, -1, null, onClick)
+            : this(title, message, durationSeconds, isDark, isAr, iconSymbol, "BottomRight", "Medium", -1, -1, false, null, onClick)
         {
         }
 
         public ToastNotificationWindow(string title, string message, int durationSeconds, bool isDark, bool isAr, string iconSymbol, string position, string size, Action onClick)
-            : this(title, message, durationSeconds, isDark, isAr, iconSymbol, position, size, -1, -1, null, onClick)
+            : this(title, message, durationSeconds, isDark, isAr, iconSymbol, position, size, -1, -1, false, null, onClick)
         {
         }
 
         public ToastNotificationWindow(string title, string message, int durationSeconds, bool isDark, bool isAr, string iconSymbol, string position, string size, double customLeft, double customTop, Action<double, double> onPositionDragged, Action onClick)
+            : this(title, message, durationSeconds, isDark, isAr, iconSymbol, position, size, customLeft, customTop, false, onPositionDragged, onClick)
+        {
+        }
+
+        public ToastNotificationWindow(string title, string message, int durationSeconds, bool isDark, bool isAr, string iconSymbol, string position, string size, double customLeft, double customTop, bool isCalibration, Action<double, double> onPositionDragged, Action onClick)
         {
             _onClickAction = onClick;
             _position = string.IsNullOrEmpty(position) ? "BottomRight" : position;
             _size = string.IsNullOrEmpty(size) ? "Medium" : size;
             _customLeft = customLeft;
             _customTop = customTop;
+            _isCalibration = isCalibration;
             _onPositionDragged = onPositionDragged;
             _duration = TimeSpan.FromSeconds(Math.Max(0, durationSeconds));
 
@@ -144,9 +168,10 @@ namespace ShiaPrayerTimes
                 Margin = new Thickness(12),
                 CornerRadius = new CornerRadius(12),
                 Background = UIThemeHelper.GetBrush(isDark ? Color.FromRgb(15, 23, 42) : Color.FromRgb(255, 255, 255)),
-                BorderBrush = UIThemeHelper.GetBrush(Color.FromRgb(16, 185, 129)), // Emerald accent
-                BorderThickness = new Thickness(1.5),
+                BorderBrush = UIThemeHelper.GetBrush(isCalibration ? Color.FromRgb(217, 119, 6) : Color.FromRgb(16, 185, 129)),
+                BorderThickness = new Thickness(isCalibration ? 2.0 : 1.5),
                 ClipToBounds = true,
+                Cursor = isCalibration ? Cursors.SizeAll : Cursors.Arrow,
                 Effect = new DropShadowEffect
                 {
                     BlurRadius = 14,
@@ -156,42 +181,46 @@ namespace ShiaPrayerTimes
                 }
             };
 
-            // Allow dragging toast to any custom position and automatically save the new location
-            outerBorder.MouseLeftButtonDown += (s, e) =>
+            // Only allow dragging when in calibration mode from Settings!
+            if (isCalibration)
             {
-                if (e.ButtonState == MouseButtonState.Pressed)
+                outerBorder.MouseLeftButtonDown += (s, e) =>
                 {
-                    double prevLeft = Left;
-                    double prevTop = Top;
-                    try { DragMove(); } catch { }
-                    if (Math.Abs(Left - prevLeft) > 5 || Math.Abs(Top - prevTop) > 5)
+                    if (e.ButtonState == MouseButtonState.Pressed)
                     {
-                        _customLeft = Left;
-                        _customTop = Top;
-                        _position = "Custom";
-                        if (_onPositionDragged != null)
-                        {
-                            _onPositionDragged(Left, Top);
-                        }
+                        try { DragMove(); } catch { }
                     }
-                }
-            };
+                };
+            }
 
             var mainGrid = new Grid();
             mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
             mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Progress bar
 
             // Content Grid
-            var contentGrid = new Grid { Margin = contentPad, Cursor = Cursors.Hand };
+            var contentGrid = new Grid { Margin = contentPad, Cursor = isCalibration ? Cursors.SizeAll : Cursors.Hand };
             contentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // Icon
             contentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }); // Texts
             contentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // Close Button
 
-            contentGrid.MouseLeftButtonUp += (s, e) =>
+            if (!isCalibration)
             {
-                if (_onClickAction != null) _onClickAction();
-                Dismiss();
-            };
+                contentGrid.MouseLeftButtonUp += (s, e) =>
+                {
+                    if (_onClickAction != null) _onClickAction();
+                    Dismiss();
+                };
+            }
+            else
+            {
+                contentGrid.MouseLeftButtonDown += (s, e) =>
+                {
+                    if (e.ButtonState == MouseButtonState.Pressed)
+                    {
+                        try { DragMove(); } catch { }
+                    }
+                };
+            }
 
             // 1. Icon Badge
             var iconBorder = new Border
@@ -280,6 +309,58 @@ namespace ShiaPrayerTimes
 
             Grid.SetRow(contentGrid, 0);
             mainGrid.Children.Add(contentGrid);
+
+            // 4. Calibration action bar (Confirm / Cancel position)
+            if (isCalibration)
+            {
+                var calibRow = new Grid { Margin = new Thickness(12, 0, 12, 10) };
+                calibRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                calibRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+                var confirmBtn = new System.Windows.Controls.Button
+                {
+                    Content = isAr ? "✓ تثبيت هذا الموضع وحفظه" : "✓ Confirm & Save Position",
+                    Background = UIThemeHelper.GetBrush(UIThemeHelper.AccentEmerald),
+                    Foreground = Brushes.White,
+                    FontWeight = FontWeights.Bold,
+                    FontSize = 11.5,
+                    Padding = new Thickness(12, 6, 12, 6),
+                    BorderThickness = new Thickness(0),
+                    Cursor = Cursors.Hand
+                };
+                confirmBtn.Click += (s, e) =>
+                {
+                    _customLeft = Left;
+                    _customTop = Top;
+                    _position = "Custom";
+                    if (_onPositionDragged != null)
+                    {
+                        _onPositionDragged(Left, Top);
+                    }
+                    Dismiss();
+                };
+                Grid.SetColumn(confirmBtn, 0);
+                calibRow.Children.Add(confirmBtn);
+
+                var cancelCalibBtn = new System.Windows.Controls.Button
+                {
+                    Content = isAr ? "إلغاء" : "Cancel",
+                    Background = UIThemeHelper.GetBrush(isDark ? Color.FromRgb(51, 65, 85) : Color.FromRgb(226, 232, 240)),
+                    Foreground = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkTextPrimary : UIThemeHelper.LightTextPrimary),
+                    FontSize = 11,
+                    Padding = new Thickness(10, 6, 10, 6),
+                    Margin = new Thickness(6, 0, 0, 0),
+                    BorderThickness = new Thickness(0),
+                    Cursor = Cursors.Hand
+                };
+                cancelCalibBtn.Click += (s, e) => Dismiss();
+                Grid.SetColumn(cancelCalibBtn, 1);
+                calibRow.Children.Add(cancelCalibBtn);
+
+                mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                Grid.SetRow(calibRow, mainGrid.RowDefinitions.Count - 1);
+                mainGrid.Children.Add(calibRow);
+            }
 
             // 4. Progress Bar
             if (durationSeconds > 0)

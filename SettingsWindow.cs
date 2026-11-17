@@ -1550,6 +1550,48 @@ namespace ShiaPrayerTimes
             }
             _toastPositionCombo.SelectedIndex = posIdx;
             nPosStack.Children.Add(_toastPositionCombo);
+
+            var setCustomPosBtn = new System.Windows.Controls.Button
+            {
+                Content = isAr ? "📍 تحديد موضع مخصص بالسحب (Drag & Drop)..." : "📍 Set Custom Position via Drag & Drop...",
+                Height = 30,
+                Margin = new Thickness(0, 6, 0, 0),
+                Background = UIThemeHelper.GetBrush(isDark ? Color.FromRgb(30, 41, 59) : Color.FromRgb(241, 245, 249)),
+                Foreground = UIThemeHelper.GetBrush(Color.FromRgb(16, 185, 129)),
+                BorderBrush = UIThemeHelper.GetBrush(Color.FromRgb(16, 185, 129)),
+                BorderThickness = new Thickness(1),
+                FontWeight = FontWeights.SemiBold,
+                Cursor = System.Windows.Input.Cursors.Hand,
+                FontSize = 11.5
+            };
+            setCustomPosBtn.Click += (s, e) =>
+            {
+                syncNotifParams();
+                ToastNotificationWindow.ShowCalibrationToast(isDark, isAr, _settings.ToastSize, _settings.CustomToastLeft, _settings.CustomToastTop, (newLeft, newTop) =>
+                {
+                    _settings.CustomToastLeft = newLeft;
+                    _settings.CustomToastTop = newTop;
+                    _settings.ToastPosition = "Custom";
+                    _settings.Save();
+
+                    for (int pi = 0; pi < _toastPositionCombo.Items.Count; pi++)
+                    {
+                        var ci = _toastPositionCombo.Items[pi] as ComboBoxItem;
+                        if (ci != null && (string)ci.Tag == "Custom")
+                        {
+                            _toastPositionCombo.SelectedIndex = pi;
+                            break;
+                        }
+                    }
+
+                    testStatusLabel.Text = isAr
+                        ? string.Format("✓ تم تثبيت وحفظ الموضع المخصص بنجاح! (X: {0}, Y: {1})", (int)newLeft, (int)newTop)
+                        : string.Format("✓ Custom position saved successfully! (X: {0}, Y: {1})", (int)newLeft, (int)newTop);
+                    testStatusLabel.Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentEmerald);
+                });
+            };
+            nPosStack.Children.Add(setCustomPosBtn);
+
             Grid.SetRow(nPosStack, 1);
             Grid.SetColumn(nPosStack, 0);
             notifOptionsGrid.Children.Add(nPosStack);
