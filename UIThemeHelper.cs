@@ -38,6 +38,11 @@ namespace ShiaPrayerTimes
         private static ControlTemplate _darkComboTemplate = null;
         private static ControlTemplate _lightComboTemplate = null;
 
+        private static Style _darkTabControlStyle = null;
+        private static Style _lightTabControlStyle = null;
+        private static Style _darkTabItemStyle = null;
+        private static Style _lightTabItemStyle = null;
+
         public static SolidColorBrush GetBrush(Color c)
         {
             var b = new SolidColorBrush(c);
@@ -335,6 +340,174 @@ namespace ShiaPrayerTimes
                 </ControlTemplate>";
 
                 _lightComboTemplate = (ControlTemplate)XamlReader.Parse(lightXaml);
+            }
+        }
+
+        public static void ApplyTabControlTheme(TabControl tabControl, bool isDark)
+        {
+            EnsureTabStyles();
+            tabControl.Style = isDark ? _darkTabControlStyle : _lightTabControlStyle;
+            tabControl.ItemContainerStyle = isDark ? _darkTabItemStyle : _lightTabItemStyle;
+        }
+
+        public static void ApplyTabItemTheme(TabItem tabItem, bool isDark)
+        {
+            EnsureTabStyles();
+            tabItem.Style = isDark ? _darkTabItemStyle : _lightTabItemStyle;
+        }
+
+        private static void EnsureTabStyles()
+        {
+            if (_darkTabItemStyle == null)
+            {
+                string xaml = @"
+                <ResourceDictionary xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'
+                                    xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml'>
+
+                    <!-- Dark Tab Control Style -->
+                    <Style x:Key='DarkTabControl' TargetType='{x:Type TabControl}'>
+                        <Setter Property='Background' Value='Transparent'/>
+                        <Setter Property='BorderThickness' Value='0'/>
+                        <Setter Property='Template'>
+                            <Setter.Value>
+                                <ControlTemplate TargetType='{x:Type TabControl}'>
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height='Auto'/>
+                                            <RowDefinition Height='*'/>
+                                        </Grid.RowDefinitions>
+                                        <Border Grid.Row='0' BorderBrush='#334155' BorderThickness='0,0,0,1' Margin='0,0,0,8'>
+                                            <TabPanel IsItemsHost='True' Margin='0,0,0,-1'/>
+                                        </Border>
+                                        <Border Grid.Row='1' Background='Transparent' BorderThickness='0'>
+                                            <ContentPresenter ContentSource='SelectedContent'/>
+                                        </Border>
+                                    </Grid>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+
+                    <!-- Dark Tab Item Style -->
+                    <Style x:Key='DarkTabItem' TargetType='{x:Type TabItem}'>
+                        <Setter Property='FocusVisualStyle' Value='{x:Null}'/>
+                        <Setter Property='FontSize' Value='13'/>
+                        <Setter Property='FontWeight' Value='SemiBold'/>
+                        <Setter Property='Cursor' Value='Hand'/>
+                        <Setter Property='Template'>
+                            <Setter.Value>
+                                <ControlTemplate TargetType='{x:Type TabItem}'>
+                                    <Border Name='TabBorder'
+                                            Background='#1E293B'
+                                            BorderBrush='#334155'
+                                            BorderThickness='1,1,1,0'
+                                            CornerRadius='6,6,0,0'
+                                            Margin='3,0,3,0'
+                                            Padding='16,10,16,10'>
+                                        <ContentPresenter Name='ContentSite'
+                                                          VerticalAlignment='Center'
+                                                          HorizontalAlignment='Center'
+                                                          ContentSource='Header'
+                                                          RecognizesAccessKey='True'/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property='IsMouseOver' Value='True'>
+                                            <Setter TargetName='TabBorder' Property='Background' Value='#334155'/>
+                                            <Setter TargetName='TabBorder' Property='BorderBrush' Value='#475569'/>
+                                            <Setter TargetName='TabBorder' Property='TextElement.Foreground' Value='#FFFFFF'/>
+                                        </Trigger>
+                                        <Trigger Property='IsSelected' Value='True'>
+                                            <Setter TargetName='TabBorder' Property='Background' Value='#10B981'/>
+                                            <Setter TargetName='TabBorder' Property='BorderBrush' Value='#10B981'/>
+                                            <Setter TargetName='TabBorder' Property='TextElement.Foreground' Value='#FFFFFF'/>
+                                            <Setter TargetName='TabBorder' Property='TextElement.FontWeight' Value='Bold'/>
+                                        </Trigger>
+                                        <Trigger Property='IsSelected' Value='False'>
+                                            <Setter TargetName='TabBorder' Property='Background' Value='#1E293B'/>
+                                            <Setter TargetName='TabBorder' Property='BorderBrush' Value='#334155'/>
+                                            <Setter TargetName='TabBorder' Property='TextElement.Foreground' Value='#CBD5E1'/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+
+                    <!-- Light Tab Control Style -->
+                    <Style x:Key='LightTabControl' TargetType='{x:Type TabControl}'>
+                        <Setter Property='Background' Value='Transparent'/>
+                        <Setter Property='BorderThickness' Value='0'/>
+                        <Setter Property='Template'>
+                            <Setter.Value>
+                                <ControlTemplate TargetType='{x:Type TabControl}'>
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height='Auto'/>
+                                            <RowDefinition Height='*'/>
+                                        </Grid.RowDefinitions>
+                                        <Border Grid.Row='0' BorderBrush='#CBD5E1' BorderThickness='0,0,0,1' Margin='0,0,0,8'>
+                                            <TabPanel IsItemsHost='True' Margin='0,0,0,-1'/>
+                                        </Border>
+                                        <Border Grid.Row='1' Background='Transparent' BorderThickness='0'>
+                                            <ContentPresenter ContentSource='SelectedContent'/>
+                                        </Border>
+                                    </Grid>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+
+                    <!-- Light Tab Item Style -->
+                    <Style x:Key='LightTabItem' TargetType='{x:Type TabItem}'>
+                        <Setter Property='FocusVisualStyle' Value='{x:Null}'/>
+                        <Setter Property='FontSize' Value='13'/>
+                        <Setter Property='FontWeight' Value='SemiBold'/>
+                        <Setter Property='Cursor' Value='Hand'/>
+                        <Setter Property='Template'>
+                            <Setter.Value>
+                                <ControlTemplate TargetType='{x:Type TabItem}'>
+                                    <Border Name='TabBorder'
+                                            Background='#F1F5F9'
+                                            BorderBrush='#CBD5E1'
+                                            BorderThickness='1,1,1,0'
+                                            CornerRadius='6,6,0,0'
+                                            Margin='3,0,3,0'
+                                            Padding='16,10,16,10'>
+                                        <ContentPresenter Name='ContentSite'
+                                                          VerticalAlignment='Center'
+                                                          HorizontalAlignment='Center'
+                                                          ContentSource='Header'
+                                                          RecognizesAccessKey='True'/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property='IsMouseOver' Value='True'>
+                                            <Setter TargetName='TabBorder' Property='Background' Value='#E2E8F0'/>
+                                            <Setter TargetName='TabBorder' Property='BorderBrush' Value='#94A3B8'/>
+                                            <Setter TargetName='TabBorder' Property='TextElement.Foreground' Value='#0F172A'/>
+                                        </Trigger>
+                                        <Trigger Property='IsSelected' Value='True'>
+                                            <Setter TargetName='TabBorder' Property='Background' Value='#059669'/>
+                                            <Setter TargetName='TabBorder' Property='BorderBrush' Value='#059669'/>
+                                            <Setter TargetName='TabBorder' Property='TextElement.Foreground' Value='#FFFFFF'/>
+                                            <Setter TargetName='TabBorder' Property='TextElement.FontWeight' Value='Bold'/>
+                                        </Trigger>
+                                        <Trigger Property='IsSelected' Value='False'>
+                                            <Setter TargetName='TabBorder' Property='Background' Value='#F1F5F9'/>
+                                            <Setter TargetName='TabBorder' Property='BorderBrush' Value='#CBD5E1'/>
+                                            <Setter TargetName='TabBorder' Property='TextElement.Foreground' Value='#334155'/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </ResourceDictionary>";
+
+                var dict = (ResourceDictionary)XamlReader.Parse(xaml);
+                _darkTabControlStyle = (Style)dict["DarkTabControl"];
+                _darkTabItemStyle = (Style)dict["DarkTabItem"];
+                _lightTabControlStyle = (Style)dict["LightTabControl"];
+                _lightTabItemStyle = (Style)dict["LightTabItem"];
             }
         }
 

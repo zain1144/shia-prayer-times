@@ -108,11 +108,9 @@ namespace ShiaPrayerTimes
 
             var tabControl = new System.Windows.Controls.TabControl
             {
-                Margin = new Thickness(16, 10, 16, 6),
-                Background = Brushes.Transparent,
-                BorderBrush = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkBorder : UIThemeHelper.LightBorder),
-                BorderThickness = new Thickness(1)
+                Margin = new Thickness(16, 10, 16, 6)
             };
+            UIThemeHelper.ApplyTabControlTheme(tabControl, isDark);
 
             // 1. Prayer Settings Matrix Tab
             var tabMatrix = CreateTabItem(isAr ? " 📋 مصفوفة الصلوات والتنبيهات " : " 📋 Prayers & Alerts Matrix ", CreateMatrixTabContent(isDark, isAr), isDark);
@@ -185,13 +183,9 @@ namespace ShiaPrayerTimes
             var tab = new TabItem
             {
                 Header = header,
-                Content = content,
-                FontSize = 13,
-                FontWeight = FontWeights.Bold,
-                Foreground = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkTextPrimary : UIThemeHelper.LightTextPrimary),
-                Background = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkCardBg : UIThemeHelper.LightCardBg),
-                Padding = new Thickness(14, 8, 14, 8)
+                Content = content
             };
+            UIThemeHelper.ApplyTabItemTheme(tab, isDark);
             return tab;
         }
 
