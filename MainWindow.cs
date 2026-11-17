@@ -1026,7 +1026,7 @@ namespace ShiaPrayerTimes
                         if (!_firedAlerts.Contains(remKey))
                         {
                             _firedAlerts.Add(remKey);
-                            _audioNotifier.TriggerReminderNotification(namesAr[ev], ev, cfg.ReminderMinutes);
+                            _audioNotifier.TriggerReminderNotification(namesAr[ev], ev, cfg.ReminderMinutes, cfg.ReminderSoundId, cfg.CustomReminderAudioPath);
                         }
                     }
                 }

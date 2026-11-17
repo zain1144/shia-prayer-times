@@ -37,6 +37,8 @@ namespace ShiaPrayerTimes
 
         private static ControlTemplate _darkComboTemplate = null;
         private static ControlTemplate _lightComboTemplate = null;
+        private static Style _darkComboItemStyle = null;
+        private static Style _lightComboItemStyle = null;
 
         private static Style _darkTabControlStyle = null;
         private static Style _lightTabControlStyle = null;
@@ -213,11 +215,12 @@ namespace ShiaPrayerTimes
         {
             EnsureTemplates();
             combo.Template = isDark ? _darkComboTemplate : _lightComboTemplate;
+            combo.ItemContainerStyle = isDark ? _darkComboItemStyle : _lightComboItemStyle;
             combo.Background = GetBrush(isDark ? DarkInputBg : LightInputBg);
             combo.Foreground = GetBrush(isDark ? DarkTextPrimary : LightTextPrimary);
             combo.BorderBrush = GetBrush(isDark ? DarkBorder : LightBorder);
             combo.BorderThickness = new Thickness(1);
-            combo.FontSize = 13;
+            combo.FontSize = 12.5;
         }
 
         private static void EnsureTemplates()
@@ -229,37 +232,37 @@ namespace ShiaPrayerTimes
                                  xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml'
                                  TargetType='{x:Type ComboBox}'>
                     <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width='*'/>
+                            <ColumnDefinition Width='22'/>
+                        </Grid.ColumnDefinitions>
                         <ToggleButton Name='ToggleButton'
+                                      Grid.ColumnSpan='2'
                                       Focusable='false'
                                       IsChecked='{Binding Path=IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}'
                                       ClickMode='Press'>
                             <ToggleButton.Template>
                                 <ControlTemplate TargetType='{x:Type ToggleButton}'>
-                                    <Border Name='Border' Background='#1E293B' BorderBrush='#475569' BorderThickness='1' CornerRadius='4'>
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width='*'/>
-                                                <ColumnDefinition Width='24'/>
-                                            </Grid.ColumnDefinitions>
-                                            <Path Grid.Column='1' HorizontalAlignment='Center' VerticalAlignment='Center'
-                                                  Data='M 0 0 L 4 4 L 8 0 Z' Fill='#F59E0B'/>
-                                        </Grid>
-                                    </Border>
+                                    <Border Name='Border' Background='#1E293B' BorderBrush='#475569' BorderThickness='1' CornerRadius='4'/>
                                 </ControlTemplate>
                             </ToggleButton.Template>
                         </ToggleButton>
+                        <Path Grid.Column='1' HorizontalAlignment='Center' VerticalAlignment='Center' IsHitTestVisible='False'
+                              Data='M 0 0 L 4 4 L 8 0 Z' Fill='#F59E0B'/>
                         <ContentPresenter Name='ContentSite'
+                                          Grid.Column='0'
                                           IsHitTestVisible='False'
                                           Content='{TemplateBinding SelectionBoxItem}'
                                           ContentTemplate='{TemplateBinding SelectionBoxItemTemplate}'
                                           ContentTemplateSelector='{TemplateBinding ItemTemplateSelector}'
-                                          Margin='10,3,26,3'
+                                          Margin='8,2,4,2'
                                           VerticalAlignment='Center'
-                                          HorizontalAlignment='{TemplateBinding HorizontalContentAlignment}'
+                                          HorizontalAlignment='Stretch'
                                           TextBlock.Foreground='#FFFFFF'
                                           TextBlock.FontWeight='SemiBold'
                                           TextBlock.FontSize='12'/>
                         <Popup Name='Popup'
+                               Grid.ColumnSpan='2'
                                Placement='Bottom'
                                IsOpen='{TemplateBinding IsDropDownOpen}'
                                AllowsTransparency='True'
@@ -282,6 +285,36 @@ namespace ShiaPrayerTimes
                 _darkComboTemplate = (ControlTemplate)XamlReader.Parse(darkXaml);
             }
 
+            if (_darkComboItemStyle == null)
+            {
+                string darkItemXaml = @"
+                <Style xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'
+                       xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml'
+                       TargetType='{x:Type ComboBoxItem}'>
+                    <Setter Property='Padding' Value='8,5,8,5'/>
+                    <Setter Property='Foreground' Value='#FFFFFF'/>
+                    <Setter Property='FontSize' Value='12'/>
+                    <Setter Property='Template'>
+                        <Setter.Value>
+                            <ControlTemplate TargetType='{x:Type ComboBoxItem}'>
+                                <Border Name='ItemBorder' Background='Transparent' Padding='{TemplateBinding Padding}' SnapsToDevicePixels='True'>
+                                    <ContentPresenter VerticalAlignment='Center'/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property='IsHighlighted' Value='True'>
+                                        <Setter TargetName='ItemBorder' Property='Background' Value='#334155'/>
+                                    </Trigger>
+                                    <Trigger Property='IsSelected' Value='True'>
+                                        <Setter TargetName='ItemBorder' Property='Background' Value='#047857'/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>";
+                _darkComboItemStyle = (Style)XamlReader.Parse(darkItemXaml);
+            }
+
             if (_lightComboTemplate == null)
             {
                 string lightXaml = @"
@@ -289,37 +322,37 @@ namespace ShiaPrayerTimes
                                  xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml'
                                  TargetType='{x:Type ComboBox}'>
                     <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width='*'/>
+                            <ColumnDefinition Width='22'/>
+                        </Grid.ColumnDefinitions>
                         <ToggleButton Name='ToggleButton'
+                                      Grid.ColumnSpan='2'
                                       Focusable='false'
                                       IsChecked='{Binding Path=IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}'
                                       ClickMode='Press'>
                             <ToggleButton.Template>
                                 <ControlTemplate TargetType='{x:Type ToggleButton}'>
-                                    <Border Name='Border' Background='#F1F5F9' BorderBrush='#CBD5E1' BorderThickness='1' CornerRadius='4'>
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width='*'/>
-                                                <ColumnDefinition Width='24'/>
-                                            </Grid.ColumnDefinitions>
-                                            <Path Grid.Column='1' HorizontalAlignment='Center' VerticalAlignment='Center'
-                                                  Data='M 0 0 L 4 4 L 8 0 Z' Fill='#D97706'/>
-                                        </Grid>
-                                    </Border>
+                                    <Border Name='Border' Background='#F1F5F9' BorderBrush='#CBD5E1' BorderThickness='1' CornerRadius='4'/>
                                 </ControlTemplate>
                             </ToggleButton.Template>
                         </ToggleButton>
+                        <Path Grid.Column='1' HorizontalAlignment='Center' VerticalAlignment='Center' IsHitTestVisible='False'
+                              Data='M 0 0 L 4 4 L 8 0 Z' Fill='#D97706'/>
                         <ContentPresenter Name='ContentSite'
+                                          Grid.Column='0'
                                           IsHitTestVisible='False'
                                           Content='{TemplateBinding SelectionBoxItem}'
                                           ContentTemplate='{TemplateBinding SelectionBoxItemTemplate}'
                                           ContentTemplateSelector='{TemplateBinding ItemTemplateSelector}'
-                                          Margin='10,3,26,3'
+                                          Margin='8,2,4,2'
                                           VerticalAlignment='Center'
-                                          HorizontalAlignment='{TemplateBinding HorizontalContentAlignment}'
+                                          HorizontalAlignment='Stretch'
                                           TextBlock.Foreground='#0F172A'
                                           TextBlock.FontWeight='SemiBold'
                                           TextBlock.FontSize='12'/>
                         <Popup Name='Popup'
+                               Grid.ColumnSpan='2'
                                Placement='Bottom'
                                IsOpen='{TemplateBinding IsDropDownOpen}'
                                AllowsTransparency='True'
@@ -340,6 +373,37 @@ namespace ShiaPrayerTimes
                 </ControlTemplate>";
 
                 _lightComboTemplate = (ControlTemplate)XamlReader.Parse(lightXaml);
+            }
+
+            if (_lightComboItemStyle == null)
+            {
+                string lightItemXaml = @"
+                <Style xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'
+                       xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml'
+                       TargetType='{x:Type ComboBoxItem}'>
+                    <Setter Property='Padding' Value='8,5,8,5'/>
+                    <Setter Property='Foreground' Value='#0F172A'/>
+                    <Setter Property='FontSize' Value='12'/>
+                    <Setter Property='Template'>
+                        <Setter.Value>
+                            <ControlTemplate TargetType='{x:Type ComboBoxItem}'>
+                                <Border Name='ItemBorder' Background='Transparent' Padding='{TemplateBinding Padding}' SnapsToDevicePixels='True'>
+                                    <ContentPresenter VerticalAlignment='Center'/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property='IsHighlighted' Value='True'>
+                                        <Setter TargetName='ItemBorder' Property='Background' Value='#E2E8F0'/>
+                                    </Trigger>
+                                    <Trigger Property='IsSelected' Value='True'>
+                                        <Setter TargetName='ItemBorder' Property='Background' Value='#10B981'/>
+                                        <Setter Property='Foreground' Value='#FFFFFF'/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>";
+                _lightComboItemStyle = (Style)XamlReader.Parse(lightItemXaml);
             }
         }
 

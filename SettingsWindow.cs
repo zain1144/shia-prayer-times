@@ -23,6 +23,7 @@ namespace ShiaPrayerTimes
         private Dictionary<string, TextBlock> _offsetLabels = new Dictionary<string, TextBlock>();
         private Dictionary<string, System.Windows.Controls.ComboBox> _notifCombos = new Dictionary<string, System.Windows.Controls.ComboBox>();
         private Dictionary<string, System.Windows.Controls.ComboBox> _reminderCombos = new Dictionary<string, System.Windows.Controls.ComboBox>();
+        private Dictionary<string, System.Windows.Controls.ComboBox> _reminderSoundCombos = new Dictionary<string, System.Windows.Controls.ComboBox>(StringComparer.OrdinalIgnoreCase);
         private Dictionary<string, System.Windows.Controls.ComboBox> _soundSelectCombos = new Dictionary<string, System.Windows.Controls.ComboBox>();
 
         // Calculation Controls
@@ -73,9 +74,9 @@ namespace ShiaPrayerTimes
             bool isDark = _settings.Theme == "Dark";
 
             Title = isAr ? "إعدادات أوقات الصلاة" : "Prayer Times Settings";
-            Width = 1040;
-            Height = 720;
-            MinWidth = 980;
+            Width = 1180;
+            Height = 740;
+            MinWidth = 1050;
             MinHeight = 650;
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
             FlowDirection = isAr ? System.Windows.FlowDirection.RightToLeft : System.Windows.FlowDirection.LeftToRight;
@@ -212,19 +213,21 @@ namespace ShiaPrayerTimes
 
             // Table Header
             var headerGrid = new Grid { Margin = new Thickness(0, 0, 0, 8) };
-            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(130) });
-            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(70) });
-            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(135) });
-            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(125) });
-            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) });
-            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(145) }); // Col 0: Event
+            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(65) });  // Col 1: Show
+            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(135) }); // Col 2: Offset
+            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(155) }); // Col 3: Alert Mode
+            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(260) }); // Col 4: Adhan Sound & Test
+            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(125) }); // Col 5: Reminder Time
+            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 200 }); // Col 6: Reminder Sound
 
             headerGrid.Children.Add(MakeHeaderLabel(isAr ? "الوقت" : "Event", 0));
             headerGrid.Children.Add(MakeHeaderLabel(isAr ? "عرض" : "Show", 1));
             headerGrid.Children.Add(MakeHeaderLabel(isAr ? "الضبط (دقيقة)" : "Offset (min)", 2));
-            headerGrid.Children.Add(MakeHeaderLabel(isAr ? "التنبيه" : "Alert Mode", 3));
-            headerGrid.Children.Add(MakeHeaderLabel(isAr ? "تذكير مسبق" : "Reminder", 4));
-            headerGrid.Children.Add(MakeHeaderLabel(isAr ? "الصوت والتجربة (🔔)" : "Sound & Test (🔔)", 5));
+            headerGrid.Children.Add(MakeHeaderLabel(isAr ? "نوع التنبيه" : "Alert Mode", 3));
+            headerGrid.Children.Add(MakeHeaderLabel(isAr ? "صوت الأذان والتجربة (🔔)" : "Adhan Sound & Test (🔔)", 4));
+            headerGrid.Children.Add(MakeHeaderLabel(isAr ? "وقت التذكير" : "Reminder Time", 5));
+            headerGrid.Children.Add(MakeHeaderLabel(isAr ? "صوت التذكير (▶)" : "Reminder Sound (▶)", 6));
 
             panel.Children.Add(headerGrid);
 
@@ -252,12 +255,13 @@ namespace ShiaPrayerTimes
                 }
 
                 var rowGrid = new Grid { Margin = new Thickness(0, 6, 0, 6) };
-                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(130) });
-                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(70) });
+                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(145) });
+                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(65) });
                 rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(135) });
+                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(155) });
+                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(260) });
                 rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(125) });
-                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) });
-                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 200 });
 
                 // Event Name with High Contrast Pure White
                 var nameBlock = new TextBlock
@@ -321,80 +325,57 @@ namespace ShiaPrayerTimes
                 // Notification Mode
                 var notifCombo = new System.Windows.Controls.ComboBox
                 {
-                    Width = 118,
+                    Width = 145,
                     Height = 30,
                     VerticalAlignment = VerticalAlignment.Center,
                     HorizontalAlignment = System.Windows.HorizontalAlignment.Left
                 };
                 UIThemeHelper.StyleComboBox(notifCombo, isDark);
-                notifCombo.Items.Add(new ComboBoxItem { Content = isAr ? "صامت (إيقاف)" : "Silent (Off)", Tag = "Off" });
+                notifCombo.Items.Add(new ComboBoxItem { Content = isAr ? "أذان كامل (Adhan)" : "Full Adhan Audio", Tag = "Adhan" });
+                notifCombo.Items.Add(new ComboBoxItem { Content = isAr ? "نغمة تنبيه (Chime)" : "Short Chime / Beep", Tag = "Chime" });
                 notifCombo.Items.Add(new ComboBoxItem { Content = isAr ? "إشعار مرئي فقط" : "Visual Toast Only", Tag = "Toast" });
-                notifCombo.Items.Add(new ComboBoxItem { Content = isAr ? "نغمة تنبيه / Chime" : "Short Chime / Beep", Tag = "Chime" });
-                notifCombo.Items.Add(new ComboBoxItem { Content = isAr ? "أذان كامل / Adhan" : "Full Adhan Audio", Tag = "Adhan" });
+                notifCombo.Items.Add(new ComboBoxItem { Content = isAr ? "صامت (إيقاف)" : "Silent (Off)", Tag = "Off" });
 
-                string mode = cfg.NotificationMode;
-                int selIdx = 3;
-                if (mode == "Off") selIdx = 0;
-                else if (mode == "Toast") selIdx = 1;
-                else if (mode == "Chime") selIdx = 2;
-                notifCombo.SelectedIndex = selIdx;
+                string mode = cfg.NotificationMode ?? "Adhan";
+                int selNotifIdx = 0;
+                for (int ni = 0; ni < notifCombo.Items.Count; ni++)
+                {
+                    var itm = notifCombo.Items[ni] as ComboBoxItem;
+                    if (itm != null && string.Equals(itm.Tag as string, mode, StringComparison.OrdinalIgnoreCase))
+                    {
+                        selNotifIdx = ni;
+                        break;
+                    }
+                }
+                notifCombo.SelectedIndex = selNotifIdx;
                 _notifCombos[ev] = notifCombo;
                 Grid.SetColumn(notifCombo, 3);
                 rowGrid.Children.Add(notifCombo);
 
-                // Reminder Dropdown
-                var remCombo = new System.Windows.Controls.ComboBox
-                {
-                    Width = 102,
-                    Height = 30,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    HorizontalAlignment = System.Windows.HorizontalAlignment.Left
-                };
-                UIThemeHelper.StyleComboBox(remCombo, isDark);
-                remCombo.Items.Add(new ComboBoxItem { Content = isAr ? "إيقاف" : "Off", Tag = 0 });
-                remCombo.Items.Add(new ComboBoxItem { Content = isAr ? "قبل 5 د" : "5 min before", Tag = 5 });
-                remCombo.Items.Add(new ComboBoxItem { Content = isAr ? "قبل 10 د" : "10 min before", Tag = 10 });
-                remCombo.Items.Add(new ComboBoxItem { Content = isAr ? "قبل 15 د" : "15 min before", Tag = 15 });
-                remCombo.Items.Add(new ComboBoxItem { Content = isAr ? "قبل 20 د" : "20 min before", Tag = 20 });
-                remCombo.Items.Add(new ComboBoxItem { Content = isAr ? "قبل 30 د" : "30 min before", Tag = 30 });
-
-                int remIdx = 0;
-                int[] remVals = new int[] { 0, 5, 10, 15, 20, 30 };
-                for (int ri = 0; ri < remVals.Length; ri++)
-                {
-                    if (remVals[ri] == cfg.ReminderMinutes) { remIdx = ri; break; }
-                }
-                remCombo.SelectedIndex = remIdx;
-                _reminderCombos[ev] = remCombo;
-                Grid.SetColumn(remCombo, 4);
-                rowGrid.Children.Add(remCombo);
-
-                // Sound Selection Dropdown (Adhan Library Choice) + Play Button
+                // Sound Selection Dropdown (Adhan Library Choice) + Play Button + Test Button
                 var soundPanel = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
                 var soundCombo = new System.Windows.Controls.ComboBox
                 {
-                    Width = 145,
+                    Width = 190,
                     Height = 30,
                     VerticalAlignment = VerticalAlignment.Center
                 };
                 UIThemeHelper.StyleComboBox(soundCombo, isDark);
-
-                // Populate with library sounds
                 PopulateSoundCombo(soundCombo, cfg.SoundId);
                 _soundSelectCombos[ev] = soundCombo;
 
                 var playBtn = new System.Windows.Controls.Button
                 {
                     Content = "▶",
-                    Width = 32,
-                    Height = 30,
-                    Margin = new Thickness(6, 0, 0, 0),
+                    Width = 28,
+                    Height = 28,
+                    Margin = new Thickness(4, 0, 0, 0),
                     Background = UIThemeHelper.GetBrush(isDark ? Color.FromRgb(51, 65, 85) : Color.FromRgb(226, 232, 240)),
                     Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentGold),
                     BorderThickness = new Thickness(0),
                     FontWeight = FontWeights.Bold,
                     Cursor = System.Windows.Input.Cursors.Hand,
-                    ToolTip = isAr ? "تجربة الصوت المختار" : "Test Play Selected Sound"
+                    ToolTip = isAr ? "تجربة صوت الأذان المختار" : "Test Play Selected Adhan"
                 };
                 string evKey = ev;
                 playBtn.Click += (s, e) =>
@@ -416,8 +397,8 @@ namespace ShiaPrayerTimes
                 var testPrayerNotifBtn = new System.Windows.Controls.Button
                 {
                     Content = "🔔",
-                    Width = 32,
-                    Height = 30,
+                    Width = 28,
+                    Height = 28,
                     Margin = new Thickness(4, 0, 0, 0),
                     Background = UIThemeHelper.GetBrush(isDark ? Color.FromRgb(51, 65, 85) : Color.FromRgb(226, 232, 240)),
                     Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentEmerald),
@@ -453,14 +434,135 @@ namespace ShiaPrayerTimes
                 soundPanel.Children.Add(soundCombo);
                 soundPanel.Children.Add(playBtn);
                 soundPanel.Children.Add(testPrayerNotifBtn);
-                Grid.SetColumn(soundPanel, 5);
+                Grid.SetColumn(soundPanel, 4);
                 rowGrid.Children.Add(soundPanel);
+
+                // Reminder Minutes Dropdown
+                var remCombo = new System.Windows.Controls.ComboBox
+                {
+                    Width = 118,
+                    Height = 30,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    HorizontalAlignment = System.Windows.HorizontalAlignment.Left
+                };
+                UIThemeHelper.StyleComboBox(remCombo, isDark);
+                remCombo.Items.Add(new ComboBoxItem { Content = isAr ? "إيقاف" : "Off", Tag = 0 });
+                remCombo.Items.Add(new ComboBoxItem { Content = isAr ? "قبل 5 دقائق" : "5 min before", Tag = 5 });
+                remCombo.Items.Add(new ComboBoxItem { Content = isAr ? "قبل 10 دقائق" : "10 min before", Tag = 10 });
+                remCombo.Items.Add(new ComboBoxItem { Content = isAr ? "قبل 15 دقيقة" : "15 min before", Tag = 15 });
+                remCombo.Items.Add(new ComboBoxItem { Content = isAr ? "قبل 20 دقيقة" : "20 min before", Tag = 20 });
+                remCombo.Items.Add(new ComboBoxItem { Content = isAr ? "قبل 30 دقيقة" : "30 min before", Tag = 30 });
+
+                int remIdx = 0;
+                for (int ri = 0; ri < remCombo.Items.Count; ri++)
+                {
+                    var itm = remCombo.Items[ri] as ComboBoxItem;
+                    if (itm != null && (int)itm.Tag == cfg.ReminderMinutes)
+                    {
+                        remIdx = ri;
+                        break;
+                    }
+                }
+                remCombo.SelectedIndex = remIdx;
+                _reminderCombos[ev] = remCombo;
+                Grid.SetColumn(remCombo, 5);
+                rowGrid.Children.Add(remCombo);
+
+                // Independent Reminder Sound Setting & Preview (▶)
+                var remSoundPanel = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+                var remSoundCombo = new System.Windows.Controls.ComboBox
+                {
+                    Width = 155,
+                    Height = 30,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                UIThemeHelper.StyleComboBox(remSoundCombo, isDark);
+                PopulateReminderSoundCombo(remSoundCombo, cfg.ReminderSoundId);
+                _reminderSoundCombos[ev] = remSoundCombo;
+
+                var playRemBtn = new System.Windows.Controls.Button
+                {
+                    Content = "▶",
+                    Width = 28,
+                    Height = 28,
+                    Margin = new Thickness(4, 0, 0, 0),
+                    Background = UIThemeHelper.GetBrush(isDark ? Color.FromRgb(51, 65, 85) : Color.FromRgb(226, 232, 240)),
+                    Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentGold),
+                    BorderThickness = new Thickness(0),
+                    FontWeight = FontWeights.Bold,
+                    Cursor = System.Windows.Input.Cursors.Hand,
+                    ToolTip = isAr ? "تجربة صوت التذكير المختار" : "Test Play Selected Reminder Sound"
+                };
+                playRemBtn.Click += (s, e) =>
+                {
+                    if (_audioNotifier.IsPlaying)
+                    {
+                        _audioNotifier.Stop();
+                        playRemBtn.Content = "▶";
+                    }
+                    else
+                    {
+                        var selItem = remSoundCombo.SelectedItem as ComboBoxItem;
+                        string sId = selItem != null ? (selItem.Tag as string) : "chime";
+                        _audioNotifier.PlayReminderSound(sId, cfg.CustomReminderAudioPath);
+                        if (_audioNotifier.IsPlaying)
+                        {
+                            playRemBtn.Content = "⏹";
+                        }
+                    }
+                };
+
+                remSoundPanel.Children.Add(remSoundCombo);
+                remSoundPanel.Children.Add(playRemBtn);
+                Grid.SetColumn(remSoundPanel, 6);
+                rowGrid.Children.Add(remSoundPanel);
+
+                _audioNotifier.PlaybackStateChanged += (playing, track) =>
+                {
+                    if (!playing)
+                    {
+                        playBtn.Content = "▶";
+                        playRemBtn.Content = "▶";
+                    }
+                };
 
                 panel.Children.Add(rowGrid);
             }
 
             scroll.Content = panel;
             return scroll;
+        }
+
+        private void PopulateReminderSoundCombo(System.Windows.Controls.ComboBox combo, string selectedSoundId)
+        {
+            combo.Items.Clear();
+            bool isAr = _settings.Language == "ar";
+
+            combo.Items.Add(new ComboBoxItem { Content = isAr ? "نغمة هادئة (Chime)" : "Gentle Chime", Tag = "chime" });
+            combo.Items.Add(new ComboBoxItem { Content = isAr ? "تنبيه خفيف (Beep)" : "Subtle Beep", Tag = "beep" });
+            combo.Items.Add(new ComboBoxItem { Content = isAr ? "بدون صوت (مرئي)" : "Visual Only", Tag = "silent" });
+
+            if (_settings.AdhanLibrary != null)
+            {
+                foreach (var sound in _settings.AdhanLibrary)
+                {
+                    if (string.Equals(sound.Id, "chime", StringComparison.OrdinalIgnoreCase)) continue;
+                    combo.Items.Add(new ComboBoxItem { Content = sound.Name, Tag = sound.Id });
+                }
+            }
+
+            int selIdx = 0;
+            if (string.IsNullOrEmpty(selectedSoundId)) selectedSoundId = "chime";
+            for (int i = 0; i < combo.Items.Count; i++)
+            {
+                var item = combo.Items[i] as ComboBoxItem;
+                if (item != null && string.Equals(item.Tag as string, selectedSoundId, StringComparison.OrdinalIgnoreCase))
+                {
+                    selIdx = i;
+                    break;
+                }
+            }
+            combo.SelectedIndex = selIdx;
         }
 
         private void PopulateSoundCombo(System.Windows.Controls.ComboBox combo, string selectedSoundId)
@@ -1663,6 +1765,14 @@ namespace ShiaPrayerTimes
                 string currentId = selItem != null ? (selItem.Tag as string) : "default";
                 PopulateSoundCombo(cb, currentId);
             }
+
+            foreach (var kvp in _reminderSoundCombos)
+            {
+                var cb = kvp.Value;
+                var selItem = cb.SelectedItem as ComboBoxItem;
+                string currentId = selItem != null ? (selItem.Tag as string) : "chime";
+                PopulateReminderSoundCombo(cb, currentId);
+            }
         }
 
         private void SaveBtn_Click(object sender, RoutedEventArgs e)
@@ -1688,6 +1798,12 @@ namespace ShiaPrayerTimes
 
                 var selRem = _reminderCombos[ev].SelectedItem as ComboBoxItem;
                 cfg.ReminderMinutes = selRem != null ? (int)selRem.Tag : 0;
+
+                if (_reminderSoundCombos.ContainsKey(ev))
+                {
+                    var selRemSound = _reminderSoundCombos[ev].SelectedItem as ComboBoxItem;
+                    cfg.ReminderSoundId = selRemSound != null ? (selRemSound.Tag as string) : "chime";
+                }
 
                 if (_soundSelectCombos.ContainsKey(ev))
                 {

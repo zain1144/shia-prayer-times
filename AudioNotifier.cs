@@ -70,6 +70,49 @@ namespace ShiaPrayerTimes
             }
         }
 
+        public void PlayBeep()
+        {
+            if (_settings.IsMuted) return;
+            try
+            {
+                System.Media.SystemSounds.Beep.Play();
+            }
+            catch
+            {
+                try { Console.Beep(800, 250); } catch { }
+            }
+        }
+
+        public void PlayReminderSound(string soundId = "chime", string customPath = "")
+        {
+            if (_settings.IsMuted) return;
+
+            if (string.IsNullOrEmpty(soundId) || soundId.Equals("chime", StringComparison.OrdinalIgnoreCase))
+            {
+                PlayChime();
+            }
+            else if (soundId.Equals("beep", StringComparison.OrdinalIgnoreCase))
+            {
+                PlayBeep();
+            }
+            else if (soundId.Equals("silent", StringComparison.OrdinalIgnoreCase) || soundId.Equals("off", StringComparison.OrdinalIgnoreCase))
+            {
+                // Silent / Visual Toast only
+            }
+            else
+            {
+                string audioPath = _settings.ResolveSoundPath("Reminder", soundId, customPath);
+                if (!string.IsNullOrEmpty(audioPath) && File.Exists(audioPath))
+                {
+                    PlayAudioFile(audioPath, "تذكير بالصلاة");
+                }
+                else
+                {
+                    PlayChime();
+                }
+            }
+        }
+
         public void PlayAdhan(string prayerName, string soundId = "", string customPath = "")
         {
             if (_settings.IsMuted) return;
@@ -174,19 +217,22 @@ namespace ShiaPrayerTimes
             }
         }
 
-        public void TriggerReminderNotification(string prayerNameAr, string prayerNameEn, int minutesBefore)
+        public void TriggerReminderNotification(string prayerNameAr, string prayerNameEn, int minutesBefore, string reminderSoundId = "chime", string customPath = "")
         {
-            string title = _settings.Language == "ar" ? "تذكير بالصلاة" : "Prayer Reminder";
+            string title = _settings.Language == "ar" ? "تذكير باقتراب الصلاة" : "Prayer Reminder";
             string body = _settings.Language == "ar"
                 ? string.Format("اقترب موعد صلاة {0} بعد {1} دقيقة", prayerNameAr, minutesBefore)
                 : string.Format("{0} prayer will be in {1} minutes", prayerNameEn, minutesBefore);
 
             if (_notifyIcon != null)
             {
-                _notifyIcon.ShowBalloonTip(6000, title, body, ToolTipIcon.Info);
+                _notifyIcon.ShowBalloonTip(7000, title, body, ToolTipIcon.Info);
             }
 
-            PlayChime();
+            if (reminderSoundId != "silent" && reminderSoundId != "off" && reminderSoundId != "Off")
+            {
+                PlayReminderSound(reminderSoundId, customPath);
+            }
         }
 
         public void TestVisualNotification(string prayerNameAr = "الظهر", string prayerNameEn = "Dhuhr", string timeStr = "12:00 م")
@@ -230,7 +276,7 @@ namespace ShiaPrayerTimes
             PlayAdhan(prayerNameEn, soundId, "");
         }
 
-        public void TestReminderNotification(string prayerNameAr = "الظهر", string prayerNameEn = "Dhuhr", int minutesBefore = 10)
+        public void TestReminderNotification(string prayerNameAr = "الظهر", string prayerNameEn = "Dhuhr", int minutesBefore = 10, string reminderSoundId = "chime")
         {
             string title = _settings.Language == "ar" ? "تجربة: تذكير مسبق بالصلاة" : "Test: Pre-Prayer Reminder";
             string body = _settings.Language == "ar"
@@ -241,7 +287,11 @@ namespace ShiaPrayerTimes
             {
                 _notifyIcon.ShowBalloonTip(7000, title, body, ToolTipIcon.Info);
             }
-            PlayChime();
+
+            if (reminderSoundId != "silent" && reminderSoundId != "off" && reminderSoundId != "Off")
+            {
+                PlayReminderSound(reminderSoundId);
+            }
         }
     }
 }

@@ -59,8 +59,10 @@ namespace ShiaPrayerTimes
         public int OffsetMinutes { get; set; }
         public string NotificationMode { get; set; } // "Off", "Toast", "Chime", "Adhan"
         public int ReminderMinutes { get; set; }     // 0 = Off, 5, 10, 15, 20, 30
-        public string SoundId { get; set; }          // ID of sound in AdhanLibrary
+        public string SoundId { get; set; }          // ID of sound in AdhanLibrary for Adhan
         public string CustomAudioPath { get; set; }  // Direct path if custom
+        public string ReminderSoundId { get; set; }  // "chime", "beep", "silent", or ID from AdhanLibrary
+        public string CustomReminderAudioPath { get; set; } // Direct path if custom reminder sound
 
         public PrayerEventConfig()
         {
@@ -70,9 +72,11 @@ namespace ShiaPrayerTimes
             ReminderMinutes = 0;
             SoundId = "default";
             CustomAudioPath = "";
+            ReminderSoundId = "chime";
+            CustomReminderAudioPath = "";
         }
 
-        public PrayerEventConfig(bool visible, int offset, string notifMode, int reminder = 0, string soundId = "default", string customAudio = "")
+        public PrayerEventConfig(bool visible, int offset, string notifMode, int reminder = 0, string soundId = "default", string customAudio = "", string reminderSoundId = "chime", string customReminderAudio = "")
         {
             Visible = visible;
             OffsetMinutes = offset;
@@ -80,6 +84,8 @@ namespace ShiaPrayerTimes
             ReminderMinutes = reminder;
             SoundId = soundId ?? "default";
             CustomAudioPath = customAudio ?? "";
+            ReminderSoundId = reminderSoundId ?? "chime";
+            CustomReminderAudioPath = customReminderAudio ?? "";
         }
     }
 
@@ -152,6 +158,17 @@ namespace ShiaPrayerTimes
 
             InitDefaultSounds();
 
+            if (AdhanLibrary != null)
+            {
+                foreach (var s in AdhanLibrary)
+                {
+                    if (s.Id == "default" && s.Name.Contains("Default Adhan")) s.Name = "الأذان الافتراضي (Default)";
+                    else if (s.Id == "tone" && s.Name.Contains("Spiritual")) s.Name = "نغمة الأذان (Tone)";
+                    else if (s.Id == "chime" && s.Name.Contains("Gentle")) s.Name = "نغمة هادئة (Chime)";
+                    else if (s.Id == "fajr" && s.Name.Contains("Fajr Distinct")) s.Name = "أذان الفجر المخصوص (Fajr)";
+                }
+            }
+
             Prayers = new Dictionary<string, PrayerEventConfig>(StringComparer.OrdinalIgnoreCase)
             {
                 { "Imsak", new PrayerEventConfig(false, 0, "Toast", 0, "chime") },
@@ -172,12 +189,12 @@ namespace ShiaPrayerTimes
             if (AdhanLibrary.Count == 0)
             {
                 string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                AdhanLibrary.Add(new AdhanSound("default", "الأذان الافتراضي (Default Adhan)", "", true));
-                AdhanLibrary.Add(new AdhanSound("tone", "نغمة الأذان الروحية (Spiritual Tone)", Path.Combine(baseDir, "Audio", "adhan_tone.wav"), true));
-                AdhanLibrary.Add(new AdhanSound("chime", "نغمة التنبيه الهادئة (Gentle Chime)", Path.Combine(baseDir, "Audio", "chime.wav"), true));
-                AdhanLibrary.Add(new AdhanSound("karbala", "أذان العتبة الحسينية - كربلاء المقدسة", "", false));
-                AdhanLibrary.Add(new AdhanSound("najaf", "أذان العتبة العلوية - النجف الأشرف", "", false));
-                AdhanLibrary.Add(new AdhanSound("fajr", "أذان الفجر المخصوص (Fajr Distinct Adhan)", "", false));
+                AdhanLibrary.Add(new AdhanSound("default", "الأذان الافتراضي (Default)", "", true));
+                AdhanLibrary.Add(new AdhanSound("tone", "نغمة الأذان (Tone)", Path.Combine(baseDir, "Audio", "adhan_tone.wav"), true));
+                AdhanLibrary.Add(new AdhanSound("chime", "نغمة هادئة (Chime)", Path.Combine(baseDir, "Audio", "chime.wav"), true));
+                AdhanLibrary.Add(new AdhanSound("karbala", "أذان العتبة الحسينية - كربلاء", "", false));
+                AdhanLibrary.Add(new AdhanSound("najaf", "أذان العتبة العلوية - النجف", "", false));
+                AdhanLibrary.Add(new AdhanSound("fajr", "أذان الفجر المخصوص (Fajr)", "", false));
             }
         }
 
@@ -314,6 +331,17 @@ namespace ShiaPrayerTimes
             }
             InitDefaultSounds();
 
+            if (AdhanLibrary != null)
+            {
+                foreach (var s in AdhanLibrary)
+                {
+                    if (s.Id == "default" && s.Name.Contains("Default Adhan")) s.Name = "الأذان الافتراضي (Default)";
+                    else if (s.Id == "tone" && s.Name.Contains("Spiritual")) s.Name = "نغمة الأذان (Tone)";
+                    else if (s.Id == "chime" && s.Name.Contains("Gentle")) s.Name = "نغمة هادئة (Chime)";
+                    else if (s.Id == "fajr" && s.Name.Contains("Fajr Distinct")) s.Name = "أذان الفجر المخصوص (Fajr)";
+                }
+            }
+
             if (Prayers == null) Prayers = new Dictionary<string, PrayerEventConfig>(StringComparer.OrdinalIgnoreCase);
 
             string[] names = new string[] { "Imsak", "Fajr", "Sunrise", "Dhuhr", "Asr", "Sunset", "Maghrib", "Isha", "Midnight" };
@@ -323,7 +351,13 @@ namespace ShiaPrayerTimes
                 {
                     bool vis = (n != "Imsak" && n != "Sunset");
                     string mode = (n == "Fajr" || n == "Dhuhr" || n == "Maghrib") ? "Adhan" : "Chime";
-                    Prayers[n] = new PrayerEventConfig(vis, 0, mode, 0, (mode == "Adhan" ? "default" : "chime"));
+                    Prayers[n] = new PrayerEventConfig(vis, 0, mode, 0, (mode == "Adhan" ? "default" : "chime"), "", "chime", "");
+                }
+                else
+                {
+                    var cfg = Prayers[n];
+                    if (string.IsNullOrEmpty(cfg.ReminderSoundId)) cfg.ReminderSoundId = "chime";
+                    if (cfg.CustomReminderAudioPath == null) cfg.CustomReminderAudioPath = "";
                 }
             }
         }
