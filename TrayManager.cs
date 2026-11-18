@@ -12,6 +12,16 @@ namespace ShiaPrayerTimes
 {
     public class TrayHoverFlyout : Window
     {
+        private const int GWL_EXSTYLE = -20;
+        private const int WS_EX_NOACTIVATE = 0x08000000;
+        private const int WS_EX_TOOLWINDOW = 0x00000080;
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+
         private TextBlock _iconText;
         private TextBlock _titleText;
         private TextBlock _countdownText;
@@ -94,7 +104,7 @@ namespace ShiaPrayerTimes
             Content = card;
 
             _autoHideTimer = new DispatcherTimer(DispatcherPriority.Normal);
-            _autoHideTimer.Interval = TimeSpan.FromMilliseconds(120);
+            _autoHideTimer.Interval = TimeSpan.FromMilliseconds(200);
             _autoHideTimer.Tick += (s, e) =>
             {
                 var cur = System.Windows.Forms.Cursor.Position;
@@ -105,11 +115,24 @@ namespace ShiaPrayerTimes
                 bool overFlyout = (cur.X >= Left && cur.X <= Left + ActualWidth &&
                                    cur.Y >= Top && cur.Y <= Top + ActualHeight);
 
-                if (dist > 60 && !overFlyout)
+                // Keep open if mouse is hovering over the flyout card OR remaining near the tray area (120px)
+                if (dist > 120 && !overFlyout)
                 {
                     HideFlyout();
                 }
             };
+        }
+
+        protected override void OnSourceInitialized(EventArgs e)
+        {
+            base.OnSourceInitialized(e);
+            try
+            {
+                var helper = new System.Windows.Interop.WindowInteropHelper(this);
+                int exStyle = GetWindowLong(helper.Handle, GWL_EXSTYLE);
+                SetWindowLong(helper.Handle, GWL_EXSTYLE, exStyle | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW);
+            }
+            catch { }
         }
 
         public void UpdateData(string icon, string title, string countdown, string timeDetail)
@@ -120,22 +143,44 @@ namespace ShiaPrayerTimes
             _timeText.Text = timeDetail;
         }
 
-        public void ShowAt(System.Drawing.Point mousePos)
+        public void ShowNearTray(System.Drawing.Point mousePos)
         {
             _lastHoverPos = mousePos;
 
-            double w = 240;
-            double h = 90;
-
+            var wa = SystemParameters.WorkArea;
             double screenW = SystemParameters.PrimaryScreenWidth;
             double screenH = SystemParameters.PrimaryScreenHeight;
+            double w = Width;
+            double h = Height;
 
             double left = mousePos.X - (w / 2.0);
-            if (left + w > screenW - 8) left = screenW - w - 8;
-            if (left < 8) left = 8;
+            double top = wa.Bottom - h - 10;
 
-            double top = mousePos.Y - h - 10;
-            if (top < 10) top = mousePos.Y + 22;
+            if (wa.Bottom < screenH)
+            {
+                top = wa.Bottom - h - 10;
+                left = mousePos.X - (w / 2.0);
+            }
+            else if (wa.Top > 0)
+            {
+                top = wa.Top + 10;
+                left = mousePos.X - (w / 2.0);
+            }
+            else if (wa.Right < screenW)
+            {
+                left = wa.Right - w - 10;
+                top = mousePos.Y - (h / 2.0);
+            }
+            else if (wa.Left > 0)
+            {
+                left = wa.Left + 10;
+                top = mousePos.Y - (h / 2.0);
+            }
+
+            if (left + w > wa.Right - 8) left = wa.Right - w - 8;
+            if (left < wa.Left + 8) left = wa.Left + 8;
+            if (top + h > wa.Bottom - 8) top = wa.Bottom - h - 8;
+            if (top < wa.Top + 8) top = wa.Top + 8;
 
             Left = left;
             Top = top;
@@ -180,7 +225,7 @@ namespace ShiaPrayerTimes
 
             _notifyIcon = new NotifyIcon();
             _notifyIcon.Visible = true;
-            _notifyIcon.Text = ""; // Keep empty so Windows Explorer doesn't trigger its sluggish 1-second tooltip delay!
+            _notifyIcon.Text = _settings.Language == "ar" ? "أوقات الصلاة" : "Shia Prayer Times";
 
             LoadIcon();
 
@@ -218,6 +263,8 @@ namespace ShiaPrayerTimes
 
                 bool isArLang = _settings.Language == "ar";
                 string pName = isArLang ? _lastPrayerNameAr : _lastPrayerNameEn;
+                if (string.IsNullOrEmpty(pName)) return;
+
                 bool isActual = PrayerCalculator.IsActualPrayer(_lastPrayerNameEn);
                 string title = isActual
                     ? (isArLang ? string.Format("الصلاة القادمة: {0}", pName) : string.Format("Next Prayer: {0}", pName))
@@ -227,7 +274,7 @@ namespace ShiaPrayerTimes
                 string timeDetail = string.Format("⏰ {0}  |  📍 {1}", _lastNextTimeStr, _settings.Location != null ? _settings.Location.Name : "");
 
                 _hoverFlyout.UpdateData(isActual ? "🕌 " : "⏰ ", title, countdownText, timeDetail);
-                _hoverFlyout.ShowAt(cur);
+                _hoverFlyout.ShowNearTray(cur);
             }
             catch { }
         }
@@ -397,6 +444,11 @@ namespace ShiaPrayerTimes
                 {
                     _nextPrayerMenuItem.Text = text;
                 }
+
+                // Standard Windows Tooltip (WinForms limits NotifyIcon.Text to 63 chars)
+                string tip = text;
+                if (tip.Length > 63) tip = tip.Substring(0, 63);
+                _notifyIcon.Text = tip;
 
                 // If live hover flyout is visible, update it dynamically so countdown ticks constantly!
                 if (_hoverFlyout != null && _hoverFlyout.IsVisible)
