@@ -1,6 +1,8 @@
 using System;
 using System.Drawing;
 using System.IO;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
@@ -28,9 +30,14 @@ namespace ShiaPrayerTimes
         private TextBlock _countdownText;
         private DispatcherTimer _autoHideTimer;
         private System.Drawing.Point _lastHoverPos;
+        private TrayManager _trayManager;
+        private Rect _iconRect;
+        private double _iconCenterX;
+        private double _slotHalfWidth;
 
-        public TrayHoverFlyout(bool isDark, bool isAr)
+        public TrayHoverFlyout(bool isDark, bool isAr, TrayManager trayManager = null)
         {
+            _trayManager = trayManager;
             WindowStyle = WindowStyle.None;
             AllowsTransparency = true;
             Background = System.Windows.Media.Brushes.Transparent;
@@ -107,7 +114,7 @@ namespace ShiaPrayerTimes
             Loaded += (s, e) => EnsureInsideScreen();
 
             _autoHideTimer = new DispatcherTimer(DispatcherPriority.Normal);
-            _autoHideTimer.Interval = TimeSpan.FromMilliseconds(80);
+            _autoHideTimer.Interval = TimeSpan.FromMilliseconds(50);
             _autoHideTimer.Tick += (s, e) =>
             {
                 var cur = System.Windows.Forms.Cursor.Position;
@@ -116,30 +123,38 @@ namespace ShiaPrayerTimes
 
                 double dipCurX = cur.X / scaleX;
                 double dipCurY = cur.Y / scaleY;
-                double dipLastX = _lastHoverPos.X / scaleX;
-                double dipLastY = _lastHoverPos.Y / scaleY;
 
-                double dx = Math.Abs(dipCurX - dipLastX);
-                double dy = Math.Abs(dipCurY - dipLastY);
+                // 1. Is cursor inside the flyout card itself?
+                // Strictly bounded inside the card; does NOT reach down into the taskbar!
+                bool overCard = (dipCurX >= Left - 4 && dipCurX <= Left + ActualWidth + 4 &&
+                                 dipCurY >= Top - 4 && dipCurY <= Top + ActualHeight + 2);
 
-                var screen = System.Windows.Forms.Screen.FromPoint(_lastHoverPos);
-                double waBottom = screen.WorkingArea.Bottom / scaleY;
+                // 2. Is cursor over our tray icon slot?
+                // Narrow horizontal range of our single icon slot (matching the OS highlight box)
+                double iconLeft = _iconCenterX - _slotHalfWidth - 3.0;
+                double iconRight = _iconCenterX + _slotHalfWidth + 3.0;
+                double iconTop = _iconRect.Top - 2.0;
+                double iconBottom = _iconRect.Bottom + 4.0;
 
-                // Is cursor over the flyout card or the downward bridge connecting into the taskbar?
-                bool overFlyout = (dipCurX >= Left - 6 && dipCurX <= Left + ActualWidth + 6 &&
-                                   dipCurY >= Top - 6 && dipCurY <= waBottom + 4);
+                bool onOurIcon = (dipCurX >= iconLeft && dipCurX <= iconRight &&
+                                  dipCurY >= iconTop && dipCurY <= iconBottom);
 
-                // Still on our tray icon slot (within 24 DIPs horizontally and 24 DIPs vertically from active position)
-                bool onOurIcon = (dx <= 24 && dy <= 24);
+                // 3. Is cursor on the vertical bridge between our icon and the card?
+                // Allows vertical cursor transition, but ONLY within our icon's narrow column!
+                double bridgeTop = Math.Min(Top + ActualHeight - 4.0, iconTop);
+                double bridgeBottom = Math.Max(Top + ActualHeight + 4.0, iconTop + 4.0);
 
-                if (!overFlyout && !onOurIcon)
+                bool onBridge = (dipCurX >= iconLeft && dipCurX <= iconRight &&
+                                 dipCurY >= bridgeTop && dipCurY <= bridgeBottom);
+
+                if (!overCard && !onOurIcon && !onBridge)
                 {
                     HideFlyout();
                 }
             };
         }
 
-        private static void GetDpiScale(out double scaleX, out double scaleY)
+        public static void GetDpiScale(out double scaleX, out double scaleY)
         {
             try
             {
@@ -191,10 +206,6 @@ namespace ShiaPrayerTimes
         {
             _lastHoverPos = mousePos;
 
-            _card.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
-            double w = Math.Max(MinWidth, _card.DesiredSize.Width);
-            double h = Math.Max(50, _card.DesiredSize.Height);
-
             double scaleX, scaleY;
             GetDpiScale(out scaleX, out scaleY);
 
@@ -212,18 +223,39 @@ namespace ShiaPrayerTimes
             double boundsRight = screen.Bounds.Right / scaleX;
             double boundsBottom = screen.Bounds.Bottom / scaleY;
 
-            double left = dipMouseX - (w / 2.0);
+            // Determine accurate icon slot bounds (matching the OS highlight box)
+            Rect osRect;
+            if (_trayManager != null && _trayManager.TryGetIconRect(out osRect))
+            {
+                _iconRect = osRect;
+                _iconCenterX = osRect.Left + (osRect.Width / 2.0);
+                _slotHalfWidth = Math.Max(10.0, osRect.Width / 2.0);
+            }
+            else
+            {
+                _iconCenterX = dipMouseX;
+                // Standard Windows 11 taskbar button is ~40-48 physical px wide -> in DIPs = 22 / scaleX
+                _slotHalfWidth = Math.Max(10.0, 22.0 / scaleX);
+                _iconRect = new Rect(_iconCenterX - _slotHalfWidth, waBottom, _slotHalfWidth * 2.0, Math.Max(36.0, boundsBottom - waBottom));
+            }
+
+            _card.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
+            double w = Math.Max(MinWidth, _card.DesiredSize.Width);
+            double h = Math.Max(50, _card.DesiredSize.Height);
+
+            // Center horizontally over our icon
+            double left = _iconCenterX - (w / 2.0);
             double top = waBottom - h - 2;
 
             if (waBottom < boundsBottom)
             {
                 top = waBottom - h - 2;
-                left = dipMouseX - (w / 2.0);
+                left = _iconCenterX - (w / 2.0);
             }
             else if (waTop > boundsTop)
             {
                 top = waTop + 2;
-                left = dipMouseX - (w / 2.0);
+                left = _iconCenterX - (w / 2.0);
             }
             else if (waRight < boundsRight)
             {
@@ -294,6 +326,13 @@ namespace ShiaPrayerTimes
         public void UpdateHoverPosition(System.Drawing.Point pos)
         {
             _lastHoverPos = pos;
+            Rect osRect;
+            if (_trayManager != null && _trayManager.TryGetIconRect(out osRect))
+            {
+                _iconRect = osRect;
+                _iconCenterX = osRect.Left + (osRect.Width / 2.0);
+                _slotHalfWidth = Math.Max(10.0, osRect.Width / 2.0);
+            }
         }
 
         public void HideFlyout()
@@ -305,6 +344,27 @@ namespace ShiaPrayerTimes
 
     public class TrayManager : IDisposable
     {
+        [StructLayout(LayoutKind.Sequential)]
+        public struct RECT
+        {
+            public int left;
+            public int top;
+            public int right;
+            public int bottom;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct NOTIFYICONIDENTIFIER
+        {
+            public uint cbSize;
+            public IntPtr hWnd;
+            public uint uID;
+            public Guid guidItem;
+        }
+
+        [DllImport("shell32.dll", SetLastError = true)]
+        public static extern int Shell_NotifyIconGetRect(ref NOTIFYICONIDENTIFIER identifier, out RECT iconLocation);
+
         private NotifyIcon _notifyIcon;
         private Window _mainWindow;
         private AppSettings _settings;
@@ -323,6 +383,40 @@ namespace ShiaPrayerTimes
 
         public NotifyIcon NotifyIcon { get { return _notifyIcon; } }
 
+        public bool TryGetIconRect(out Rect rectInDips)
+        {
+            rectInDips = Rect.Empty;
+            try
+            {
+                if (_notifyIcon == null) return false;
+                var fiId = typeof(NotifyIcon).GetField("id", BindingFlags.NonPublic | BindingFlags.Instance);
+                var fiWnd = typeof(NotifyIcon).GetField("window", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (fiId == null || fiWnd == null) return false;
+
+                int id = (int)fiId.GetValue(_notifyIcon);
+                NativeWindow wnd = (NativeWindow)fiWnd.GetValue(_notifyIcon);
+                if (wnd == null || wnd.Handle == IntPtr.Zero) return false;
+
+                NOTIFYICONIDENTIFIER nid = new NOTIFYICONIDENTIFIER();
+                nid.cbSize = (uint)Marshal.SizeOf(typeof(NOTIFYICONIDENTIFIER));
+                nid.hWnd = wnd.Handle;
+                nid.uID = (uint)id;
+                nid.guidItem = Guid.Empty;
+
+                RECT r;
+                int hr = Shell_NotifyIconGetRect(ref nid, out r);
+                if (hr == 0 && r.right > r.left && r.bottom > r.top)
+                {
+                    double scaleX, scaleY;
+                    TrayHoverFlyout.GetDpiScale(out scaleX, out scaleY);
+                    rectInDips = new Rect(r.left / scaleX, r.top / scaleY, (r.right - r.left) / scaleX, (r.bottom - r.top) / scaleY);
+                    return true;
+                }
+            }
+            catch { }
+            return false;
+        }
+
         public TrayManager(Window mainWindow, AppSettings settings, AudioNotifier audioNotifier)
         {
             _mainWindow = mainWindow;
@@ -338,27 +432,28 @@ namespace ShiaPrayerTimes
             // Pre-create and warm up the hover flyout immediately at startup
             bool isDark = _settings.Theme == "Dark";
             bool isAr = _settings.Language == "ar";
-            _hoverFlyout = new TrayHoverFlyout(isDark, isAr);
+            _hoverFlyout = new TrayHoverFlyout(isDark, isAr, this);
 
-            // Hover stabilization timer (180ms delay to settle mouse before showing, beats Windows 11 400ms tooltip)
+            // Hover stabilization timer (60ms delay, beats Windows 11 400ms tooltip)
             _hoverTimer = new DispatcherTimer(DispatcherPriority.Normal);
-            _hoverTimer.Interval = TimeSpan.FromMilliseconds(180);
+            _hoverTimer.Interval = TimeSpan.FromMilliseconds(60);
             _hoverTimer.Tick += (s, e) =>
             {
                 _hoverTimer.Stop();
                 try
                 {
                     var cur = System.Windows.Forms.Cursor.Position;
-                    double scaleX = (double)Screen.PrimaryScreen.Bounds.Width / SystemParameters.PrimaryScreenWidth;
-                    double scaleY = (double)Screen.PrimaryScreen.Bounds.Height / SystemParameters.PrimaryScreenHeight;
-                    if (scaleX <= 0.1) scaleX = 1.0;
-                    if (scaleY <= 0.1) scaleY = 1.0;
+                    double scaleX, scaleY;
+                    TrayHoverFlyout.GetDpiScale(out scaleX, out scaleY);
+
+                    var screen = System.Windows.Forms.Screen.FromPoint(cur);
+                    double waBottom = screen.WorkingArea.Bottom / scaleY;
 
                     double dx = Math.Abs((cur.X - _pendingHoverPos.X) / scaleX);
-                    double dy = Math.Abs((cur.Y - _pendingHoverPos.Y) / scaleY);
+                    double curY = cur.Y / scaleY;
 
-                    // Check that the mouse has settled on our icon slot (generous 24 DIPs tolerance)
-                    if (dx <= 24 && dy <= 24)
+                    // Ensure cursor is still in taskbar area near our pending hover position
+                    if (dx <= 16 && curY >= waBottom - 4)
                     {
                         ShowHoverFlyoutAt(cur);
                     }
@@ -386,7 +481,6 @@ namespace ShiaPrayerTimes
             try
             {
                 var cur = System.Windows.Forms.Cursor.Position;
-                _pendingHoverPos = cur;
 
                 // If flyout is already visible, update position and keep it alive!
                 if (_hoverFlyout != null && _hoverFlyout.IsVisible)
@@ -395,9 +489,12 @@ namespace ShiaPrayerTimes
                     return;
                 }
 
-                // Restart hover delay timer (waits for mouse to settle, but faster than Windows default)
-                _hoverTimer.Stop();
-                _hoverTimer.Start();
+                // Start hover timer if not already running (prevents continuous resetting on mouse move)
+                if (!_hoverTimer.IsEnabled)
+                {
+                    _pendingHoverPos = cur;
+                    _hoverTimer.Start();
+                }
             }
             catch { }
         }
@@ -410,7 +507,7 @@ namespace ShiaPrayerTimes
                 {
                     bool isDark = _settings.Theme == "Dark";
                     bool isAr = _settings.Language == "ar";
-                    _hoverFlyout = new TrayHoverFlyout(isDark, isAr);
+                    _hoverFlyout = new TrayHoverFlyout(isDark, isAr, this);
                 }
 
                 bool isArLang = _settings.Language == "ar";
