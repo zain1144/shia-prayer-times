@@ -111,6 +111,7 @@ namespace ShiaPrayerTimes
             _card.Child = stack;
             Content = _card;
 
+            _lastHoverPos = System.Windows.Forms.Cursor.Position;
             Loaded += (s, e) => EnsureInsideScreen();
 
             _autoHideTimer = new DispatcherTimer(DispatcherPriority.Normal);
@@ -118,19 +119,43 @@ namespace ShiaPrayerTimes
             _autoHideTimer.Tick += (s, e) =>
             {
                 var cur = System.Windows.Forms.Cursor.Position;
-                double dx = cur.X - _lastHoverPos.X;
-                double dy = cur.Y - _lastHoverPos.Y;
+                double scaleX, scaleY;
+                GetDpiScale(out scaleX, out scaleY);
+
+                double dipCurX = cur.X / scaleX;
+                double dipCurY = cur.Y / scaleY;
+                double dipLastX = _lastHoverPos.X / scaleX;
+                double dipLastY = _lastHoverPos.Y / scaleY;
+
+                double dx = dipCurX - dipLastX;
+                double dy = dipCurY - dipLastY;
                 double dist = Math.Sqrt(dx * dx + dy * dy);
 
-                bool overFlyout = (cur.X >= Left - 6 && cur.X <= Left + ActualWidth + 6 &&
-                                   cur.Y >= Top - 6 && cur.Y <= Top + ActualHeight + 6);
+                bool overFlyout = (dipCurX >= Left - 6 && dipCurX <= Left + ActualWidth + 6 &&
+                                   dipCurY >= Top - 6 && dipCurY <= Top + ActualHeight + 6);
 
-                // Hide if mouse moved to neighboring icon (dist > 40) and not over the flyout card
-                if (dist > 40 && !overFlyout)
+                // Hide if mouse moved to neighboring icon (dist > 45 in DIPs) and not over the flyout card
+                if (dist > 45 && !overFlyout)
                 {
                     HideFlyout();
                 }
             };
+        }
+
+        private static void GetDpiScale(out double scaleX, out double scaleY)
+        {
+            try
+            {
+                scaleX = (double)Screen.PrimaryScreen.Bounds.Width / SystemParameters.PrimaryScreenWidth;
+                scaleY = (double)Screen.PrimaryScreen.Bounds.Height / SystemParameters.PrimaryScreenHeight;
+                if (scaleX <= 0.1) scaleX = 1.0;
+                if (scaleY <= 0.1) scaleY = 1.0;
+            }
+            catch
+            {
+                scaleX = 1.0;
+                scaleY = 1.0;
+            }
         }
 
         protected override void OnSourceInitialized(EventArgs e)
@@ -171,41 +196,55 @@ namespace ShiaPrayerTimes
 
             _card.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
             // Add margin for shadow/border so clamping safely includes the full card width inside the monitor
-            double w = Math.Max(MinWidth, _card.DesiredSize.Width) + 28;
-            double h = Math.Max(50, _card.DesiredSize.Height) + 20;
+            double w = Math.Max(MinWidth, _card.DesiredSize.Width) + 16;
+            double h = Math.Max(50, _card.DesiredSize.Height) + 8;
+
+            double scaleX, scaleY;
+            GetDpiScale(out scaleX, out scaleY);
 
             var screen = System.Windows.Forms.Screen.FromPoint(mousePos);
-            var wa = screen.WorkingArea;
+            double dipMouseX = mousePos.X / scaleX;
+            double dipMouseY = mousePos.Y / scaleY;
 
-            double left = mousePos.X - (w / 2.0);
-            double top = wa.Bottom - h - 10;
+            double waLeft = screen.WorkingArea.Left / scaleX;
+            double waTop = screen.WorkingArea.Top / scaleY;
+            double waRight = screen.WorkingArea.Right / scaleX;
+            double waBottom = screen.WorkingArea.Bottom / scaleY;
 
-            if (wa.Bottom < screen.Bounds.Bottom)
+            double boundsLeft = screen.Bounds.Left / scaleX;
+            double boundsTop = screen.Bounds.Top / scaleY;
+            double boundsRight = screen.Bounds.Right / scaleX;
+            double boundsBottom = screen.Bounds.Bottom / scaleY;
+
+            double left = dipMouseX - (w / 2.0);
+            double top = waBottom - h - 10;
+
+            if (waBottom < boundsBottom)
             {
-                top = wa.Bottom - h - 10;
-                left = mousePos.X - (w / 2.0);
+                top = waBottom - h - 10;
+                left = dipMouseX - (w / 2.0);
             }
-            else if (wa.Top > screen.Bounds.Top)
+            else if (waTop > boundsTop)
             {
-                top = wa.Top + 10;
-                left = mousePos.X - (w / 2.0);
+                top = waTop + 10;
+                left = dipMouseX - (w / 2.0);
             }
-            else if (wa.Right < screen.Bounds.Right)
+            else if (waRight < boundsRight)
             {
-                left = wa.Right - w - 10;
-                top = mousePos.Y - (h / 2.0);
+                left = waRight - w - 10;
+                top = dipMouseY - (h / 2.0);
             }
-            else if (wa.Left > screen.Bounds.Left)
+            else if (waLeft > boundsLeft)
             {
-                left = wa.Left + 10;
-                top = mousePos.Y - (h / 2.0);
+                left = waLeft + 10;
+                top = dipMouseY - (h / 2.0);
             }
 
             // Strictly clamp inside the working area of the monitor where the cursor is!
-            if (left + w > wa.Right - 10) left = wa.Right - w - 10;
-            if (left < wa.Left + 10) left = wa.Left + 10;
-            if (top + h > wa.Bottom - 8) top = wa.Bottom - h - 8;
-            if (top < wa.Top + 8) top = wa.Top + 8;
+            if (left + w > waRight - 10) left = waRight - w - 10;
+            if (left < waLeft + 10) left = waLeft + 10;
+            if (top + h > waBottom - 8) top = waBottom - h - 8;
+            if (top < waTop + 8) top = waTop + 8;
 
             Left = left;
             Top = top;
@@ -224,26 +263,33 @@ namespace ShiaPrayerTimes
         {
             try
             {
+                double scaleX, scaleY;
+                GetDpiScale(out scaleX, out scaleY);
+
                 var screen = System.Windows.Forms.Screen.FromPoint(_lastHoverPos);
-                var wa = screen.WorkingArea;
+                double waLeft = screen.WorkingArea.Left / scaleX;
+                double waTop = screen.WorkingArea.Top / scaleY;
+                double waRight = screen.WorkingArea.Right / scaleX;
+                double waBottom = screen.WorkingArea.Bottom / scaleY;
+
                 double curW = ActualWidth > 0 ? ActualWidth : (DesiredSize.Width > 0 ? DesiredSize.Width : 205);
                 double curH = ActualHeight > 0 ? ActualHeight : (DesiredSize.Height > 0 ? DesiredSize.Height : 60);
 
-                if (Left + curW > wa.Right - 10)
+                if (Left + curW > waRight - 10)
                 {
-                    Left = wa.Right - curW - 10;
+                    Left = waRight - curW - 10;
                 }
-                if (Left < wa.Left + 10)
+                if (Left < waLeft + 10)
                 {
-                    Left = wa.Left + 10;
+                    Left = waLeft + 10;
                 }
-                if (Top + curH > wa.Bottom - 8)
+                if (Top + curH > waBottom - 8)
                 {
-                    Top = wa.Bottom - curH - 8;
+                    Top = waBottom - curH - 8;
                 }
-                if (Top < wa.Top + 8)
+                if (Top < waTop + 8)
                 {
-                    Top = wa.Top + 8;
+                    Top = waTop + 8;
                 }
             }
             catch { }
@@ -302,12 +348,17 @@ namespace ShiaPrayerTimes
                 try
                 {
                     var cur = System.Windows.Forms.Cursor.Position;
-                    double dx = cur.X - _pendingHoverPos.X;
-                    double dy = cur.Y - _pendingHoverPos.Y;
+                    double scaleX = (double)Screen.PrimaryScreen.Bounds.Width / SystemParameters.PrimaryScreenWidth;
+                    double scaleY = (double)Screen.PrimaryScreen.Bounds.Height / SystemParameters.PrimaryScreenHeight;
+                    if (scaleX <= 0.1) scaleX = 1.0;
+                    if (scaleY <= 0.1) scaleY = 1.0;
+
+                    double dx = (cur.X - _pendingHoverPos.X) / scaleX;
+                    double dy = (cur.Y - _pendingHoverPos.Y) / scaleY;
                     double dist = Math.Sqrt(dx * dx + dy * dy);
 
-                    // Check that the mouse is hovering around the icon (generous 45px tolerance)
-                    if (dist < 45)
+                    // Check that the mouse is hovering around the icon (generous 40 DIPs tolerance)
+                    if (dist < 40)
                     {
                         ShowHoverFlyoutAt(cur);
                     }
