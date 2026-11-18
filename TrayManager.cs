@@ -48,15 +48,7 @@ namespace ShiaPrayerTimes
                 BorderBrush = UIThemeHelper.GetBrush(UIThemeHelper.AccentGold),
                 BorderThickness = new Thickness(1.5),
                 CornerRadius = new CornerRadius(10),
-                Padding = new Thickness(18, 10, 18, 10),
-                Effect = new DropShadowEffect
-                {
-                    Color = Colors.Black,
-                    Direction = 315,
-                    ShadowDepth = 3,
-                    Opacity = isDark ? 0.6 : 0.25,
-                    BlurRadius = 10
-                }
+                Padding = new Thickness(18, 10, 18, 10)
             };
 
             var stack = new StackPanel
@@ -115,7 +107,7 @@ namespace ShiaPrayerTimes
             Loaded += (s, e) => EnsureInsideScreen();
 
             _autoHideTimer = new DispatcherTimer(DispatcherPriority.Normal);
-            _autoHideTimer.Interval = TimeSpan.FromMilliseconds(150);
+            _autoHideTimer.Interval = TimeSpan.FromMilliseconds(80);
             _autoHideTimer.Tick += (s, e) =>
             {
                 var cur = System.Windows.Forms.Cursor.Position;
@@ -127,15 +119,17 @@ namespace ShiaPrayerTimes
                 double dipLastX = _lastHoverPos.X / scaleX;
                 double dipLastY = _lastHoverPos.Y / scaleY;
 
-                double dx = dipCurX - dipLastX;
-                double dy = dipCurY - dipLastY;
-                double dist = Math.Sqrt(dx * dx + dy * dy);
+                double dx = Math.Abs(dipCurX - dipLastX);
+                double dy = Math.Abs(dipCurY - dipLastY);
 
-                bool overFlyout = (dipCurX >= Left - 6 && dipCurX <= Left + ActualWidth + 6 &&
-                                   dipCurY >= Top - 6 && dipCurY <= Top + ActualHeight + 6);
+                // Is cursor over the flyout card (with 4px margin and 12px downward bridge)?
+                bool overFlyout = (dipCurX >= Left - 4 && dipCurX <= Left + ActualWidth + 4 &&
+                                   dipCurY >= Top - 4 && dipCurY <= Top + ActualHeight + 12);
 
-                // Hide if mouse moved to neighboring icon (dist > 45 in DIPs) and not over the flyout card
-                if (dist > 45 && !overFlyout)
+                // Still on our tray icon slot (within 16 DIPs horizontally and 18 DIPs vertically)
+                bool onOurIcon = (dx <= 16 && dy <= 18);
+
+                if (!overFlyout && !onOurIcon)
                 {
                     HideFlyout();
                 }
@@ -195,9 +189,8 @@ namespace ShiaPrayerTimes
             _lastHoverPos = mousePos;
 
             _card.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
-            // Add margin for shadow/border so clamping safely includes the full card width inside the monitor
-            double w = Math.Max(MinWidth, _card.DesiredSize.Width) + 16;
-            double h = Math.Max(50, _card.DesiredSize.Height) + 8;
+            double w = Math.Max(MinWidth, _card.DesiredSize.Width);
+            double h = Math.Max(50, _card.DesiredSize.Height);
 
             double scaleX, scaleY;
             GetDpiScale(out scaleX, out scaleY);
@@ -217,34 +210,34 @@ namespace ShiaPrayerTimes
             double boundsBottom = screen.Bounds.Bottom / scaleY;
 
             double left = dipMouseX - (w / 2.0);
-            double top = waBottom - h - 10;
+            double top = waBottom - h - 8;
 
             if (waBottom < boundsBottom)
             {
-                top = waBottom - h - 10;
+                top = waBottom - h - 8;
                 left = dipMouseX - (w / 2.0);
             }
             else if (waTop > boundsTop)
             {
-                top = waTop + 10;
+                top = waTop + 8;
                 left = dipMouseX - (w / 2.0);
             }
             else if (waRight < boundsRight)
             {
-                left = waRight - w - 10;
+                left = waRight - w - 8;
                 top = dipMouseY - (h / 2.0);
             }
             else if (waLeft > boundsLeft)
             {
-                left = waLeft + 10;
+                left = waLeft + 8;
                 top = dipMouseY - (h / 2.0);
             }
 
             // Strictly clamp inside the working area of the monitor where the cursor is!
-            if (left + w > waRight - 10) left = waRight - w - 10;
-            if (left < waLeft + 10) left = waLeft + 10;
-            if (top + h > waBottom - 8) top = waBottom - h - 8;
-            if (top < waTop + 8) top = waTop + 8;
+            if (left + w > waRight - 8) left = waRight - w - 8;
+            if (left < waLeft + 8) left = waLeft + 8;
+            if (top + h > waBottom - 6) top = waBottom - h - 6;
+            if (top < waTop + 6) top = waTop + 6;
 
             Left = left;
             Top = top;
@@ -275,21 +268,21 @@ namespace ShiaPrayerTimes
                 double curW = ActualWidth > 0 ? ActualWidth : (DesiredSize.Width > 0 ? DesiredSize.Width : 205);
                 double curH = ActualHeight > 0 ? ActualHeight : (DesiredSize.Height > 0 ? DesiredSize.Height : 60);
 
-                if (Left + curW > waRight - 10)
+                if (Left + curW > waRight - 8)
                 {
-                    Left = waRight - curW - 10;
+                    Left = waRight - curW - 8;
                 }
-                if (Left < waLeft + 10)
+                if (Left < waLeft + 8)
                 {
-                    Left = waLeft + 10;
+                    Left = waLeft + 8;
                 }
-                if (Top + curH > waBottom - 8)
+                if (Top + curH > waBottom - 6)
                 {
-                    Top = waBottom - curH - 8;
+                    Top = waBottom - curH - 6;
                 }
-                if (Top < waTop + 8)
+                if (Top < waTop + 6)
                 {
-                    Top = waTop + 8;
+                    Top = waTop + 6;
                 }
             }
             catch { }
@@ -353,12 +346,11 @@ namespace ShiaPrayerTimes
                     if (scaleX <= 0.1) scaleX = 1.0;
                     if (scaleY <= 0.1) scaleY = 1.0;
 
-                    double dx = (cur.X - _pendingHoverPos.X) / scaleX;
-                    double dy = (cur.Y - _pendingHoverPos.Y) / scaleY;
-                    double dist = Math.Sqrt(dx * dx + dy * dy);
+                    double dx = Math.Abs((cur.X - _pendingHoverPos.X) / scaleX);
+                    double dy = Math.Abs((cur.Y - _pendingHoverPos.Y) / scaleY);
 
-                    // Check that the mouse is hovering around the icon (generous 40 DIPs tolerance)
-                    if (dist < 40)
+                    // Check that the mouse has settled on our icon slot (16 DIPs horizontal, 18 DIPs vertical)
+                    if (dx <= 16 && dy <= 18)
                     {
                         ShowHoverFlyoutAt(cur);
                     }
