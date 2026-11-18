@@ -122,12 +122,15 @@ namespace ShiaPrayerTimes
                 double dx = Math.Abs(dipCurX - dipLastX);
                 double dy = Math.Abs(dipCurY - dipLastY);
 
-                // Is cursor over the flyout card (with 4px margin and 12px downward bridge)?
-                bool overFlyout = (dipCurX >= Left - 4 && dipCurX <= Left + ActualWidth + 4 &&
-                                   dipCurY >= Top - 4 && dipCurY <= Top + ActualHeight + 12);
+                var screen = System.Windows.Forms.Screen.FromPoint(_lastHoverPos);
+                double waBottom = screen.WorkingArea.Bottom / scaleY;
 
-                // Still on our tray icon slot (within 16 DIPs horizontally and 18 DIPs vertically)
-                bool onOurIcon = (dx <= 16 && dy <= 18);
+                // Is cursor over the flyout card or the downward bridge connecting into the taskbar?
+                bool overFlyout = (dipCurX >= Left - 6 && dipCurX <= Left + ActualWidth + 6 &&
+                                   dipCurY >= Top - 6 && dipCurY <= waBottom + 4);
+
+                // Still on our tray icon slot (within 24 DIPs horizontally and 24 DIPs vertically from active position)
+                bool onOurIcon = (dx <= 24 && dy <= 24);
 
                 if (!overFlyout && !onOurIcon)
                 {
@@ -288,6 +291,11 @@ namespace ShiaPrayerTimes
             catch { }
         }
 
+        public void UpdateHoverPosition(System.Drawing.Point pos)
+        {
+            _lastHoverPos = pos;
+        }
+
         public void HideFlyout()
         {
             _autoHideTimer.Stop();
@@ -349,8 +357,8 @@ namespace ShiaPrayerTimes
                     double dx = Math.Abs((cur.X - _pendingHoverPos.X) / scaleX);
                     double dy = Math.Abs((cur.Y - _pendingHoverPos.Y) / scaleY);
 
-                    // Check that the mouse has settled on our icon slot (16 DIPs horizontal, 18 DIPs vertical)
-                    if (dx <= 16 && dy <= 18)
+                    // Check that the mouse has settled on our icon slot (generous 24 DIPs tolerance)
+                    if (dx <= 24 && dy <= 24)
                     {
                         ShowHoverFlyoutAt(cur);
                     }
@@ -380,9 +388,10 @@ namespace ShiaPrayerTimes
                 var cur = System.Windows.Forms.Cursor.Position;
                 _pendingHoverPos = cur;
 
-                // If flyout is already visible, keep it visible
+                // If flyout is already visible, update position and keep it alive!
                 if (_hoverFlyout != null && _hoverFlyout.IsVisible)
                 {
+                    _hoverFlyout.UpdateHoverPosition(cur);
                     return;
                 }
 
