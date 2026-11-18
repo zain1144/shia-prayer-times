@@ -22,6 +22,7 @@ namespace ShiaPrayerTimes
         [System.Runtime.InteropServices.DllImport("user32.dll")]
         private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
 
+        private Border _card;
         private TextBlock _titleText;
         private TextBlock _timeText;
         private TextBlock _countdownText;
@@ -41,7 +42,7 @@ namespace ShiaPrayerTimes
             MinWidth = 205;
             FlowDirection = isAr ? System.Windows.FlowDirection.RightToLeft : System.Windows.FlowDirection.LeftToRight;
 
-            var card = new Border
+            _card = new Border
             {
                 Background = UIThemeHelper.GetBrush(isDark ? System.Windows.Media.Color.FromRgb(26, 32, 44) : System.Windows.Media.Color.FromRgb(255, 255, 255)),
                 BorderBrush = UIThemeHelper.GetBrush(UIThemeHelper.AccentGold),
@@ -107,8 +108,10 @@ namespace ShiaPrayerTimes
             timeStack.Children.Add(_countdownText);
             stack.Children.Add(timeStack);
 
-            card.Child = stack;
-            Content = card;
+            _card.Child = stack;
+            Content = _card;
+
+            Loaded += (s, e) => EnsureInsideScreen();
 
             _autoHideTimer = new DispatcherTimer(DispatcherPriority.Normal);
             _autoHideTimer.Interval = TimeSpan.FromMilliseconds(80);
@@ -157,47 +160,50 @@ namespace ShiaPrayerTimes
                 _timeText.Visibility = Visibility.Collapsed;
                 _countdownText.Text = countdownStr;
             }
+            if (IsVisible)
+            {
+                EnsureInsideScreen();
+            }
         }
 
         public void ShowNearTray(System.Drawing.Point mousePos)
         {
             _lastHoverPos = mousePos;
 
-            UpdateLayout();
-            Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
-            double w = DesiredSize.Width > 0 ? DesiredSize.Width : 180;
-            double h = DesiredSize.Height > 0 ? DesiredSize.Height : 55;
+            _card.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
+            double w = Math.Max(MinWidth, _card.DesiredSize.Width);
+            double h = Math.Max(50, _card.DesiredSize.Height);
 
-            var wa = SystemParameters.WorkArea;
-            double screenW = SystemParameters.PrimaryScreenWidth;
-            double screenH = SystemParameters.PrimaryScreenHeight;
+            var screen = System.Windows.Forms.Screen.FromPoint(mousePos);
+            var wa = screen.WorkingArea;
 
             double left = mousePos.X - (w / 2.0);
             double top = wa.Bottom - h - 10;
 
-            if (wa.Bottom < screenH)
+            if (wa.Bottom < screen.Bounds.Bottom)
             {
                 top = wa.Bottom - h - 10;
                 left = mousePos.X - (w / 2.0);
             }
-            else if (wa.Top > 0)
+            else if (wa.Top > screen.Bounds.Top)
             {
                 top = wa.Top + 10;
                 left = mousePos.X - (w / 2.0);
             }
-            else if (wa.Right < screenW)
+            else if (wa.Right < screen.Bounds.Right)
             {
                 left = wa.Right - w - 10;
                 top = mousePos.Y - (h / 2.0);
             }
-            else if (wa.Left > 0)
+            else if (wa.Left > screen.Bounds.Left)
             {
                 left = wa.Left + 10;
                 top = mousePos.Y - (h / 2.0);
             }
 
-            if (left + w > wa.Right - 8) left = wa.Right - w - 8;
-            if (left < wa.Left + 8) left = wa.Left + 8;
+            // Strictly clamp inside the working area of the monitor where the cursor is!
+            if (left + w > wa.Right - 10) left = wa.Right - w - 10;
+            if (left < wa.Left + 10) left = wa.Left + 10;
             if (top + h > wa.Bottom - 8) top = wa.Bottom - h - 8;
             if (top < wa.Top + 8) top = wa.Top + 8;
 
@@ -208,7 +214,39 @@ namespace ShiaPrayerTimes
             {
                 Show();
             }
+
+            EnsureInsideScreen();
+
             _autoHideTimer.Start();
+        }
+
+        private void EnsureInsideScreen()
+        {
+            try
+            {
+                var screen = System.Windows.Forms.Screen.FromPoint(_lastHoverPos);
+                var wa = screen.WorkingArea;
+                double curW = ActualWidth > 0 ? ActualWidth : (DesiredSize.Width > 0 ? DesiredSize.Width : 205);
+                double curH = ActualHeight > 0 ? ActualHeight : (DesiredSize.Height > 0 ? DesiredSize.Height : 60);
+
+                if (Left + curW > wa.Right - 10)
+                {
+                    Left = wa.Right - curW - 10;
+                }
+                if (Left < wa.Left + 10)
+                {
+                    Left = wa.Left + 10;
+                }
+                if (Top + curH > wa.Bottom - 8)
+                {
+                    Top = wa.Bottom - curH - 8;
+                }
+                if (Top < wa.Top + 8)
+                {
+                    Top = wa.Top + 8;
+                }
+            }
+            catch { }
         }
 
         public void HideFlyout()
