@@ -22,7 +22,6 @@ namespace ShiaPrayerTimes
         [System.Runtime.InteropServices.DllImport("user32.dll")]
         private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
 
-        private TextBlock _iconText;
         private TextBlock _titleText;
         private TextBlock _timeText;
         private TextBlock _countdownText;
@@ -39,7 +38,7 @@ namespace ShiaPrayerTimes
             ShowActivated = false;
             Focusable = false;
             SizeToContent = SizeToContent.WidthAndHeight;
-            MinWidth = 175;
+            MinWidth = 205;
             FlowDirection = isAr ? System.Windows.FlowDirection.RightToLeft : System.Windows.FlowDirection.LeftToRight;
 
             var card = new Border
@@ -48,7 +47,7 @@ namespace ShiaPrayerTimes
                 BorderBrush = UIThemeHelper.GetBrush(UIThemeHelper.AccentGold),
                 BorderThickness = new Thickness(1.5),
                 CornerRadius = new CornerRadius(10),
-                Padding = new Thickness(14, 8, 14, 8),
+                Padding = new Thickness(18, 10, 18, 10),
                 Effect = new DropShadowEffect
                 {
                     Color = Colors.Black,
@@ -65,43 +64,30 @@ namespace ShiaPrayerTimes
                 VerticalAlignment = System.Windows.VerticalAlignment.Center
             };
 
-            // Line 1: Prayer / Event Title (Centered)
-            var headerStack = new StackPanel
-            {
-                Orientation = System.Windows.Controls.Orientation.Horizontal,
-                HorizontalAlignment = System.Windows.HorizontalAlignment.Center
-            };
-            _iconText = new TextBlock
-            {
-                Text = "🕌 ",
-                FontSize = 13.5,
-                VerticalAlignment = VerticalAlignment.Center
-            };
-            headerStack.Children.Add(_iconText);
-
+            // Line 1: Prayer / Event Title (Centered, no icon)
             _titleText = new TextBlock
             {
                 Text = isAr ? "الصلاة القادمة" : "Next Prayer",
-                FontSize = 13,
+                FontSize = 14,
                 FontWeight = FontWeights.Bold,
                 Foreground = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkTextPrimary : UIThemeHelper.LightTextPrimary),
-                VerticalAlignment = VerticalAlignment.Center
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+                TextAlignment = System.Windows.TextAlignment.Center
             };
-            headerStack.Children.Add(_titleText);
-            stack.Children.Add(headerStack);
+            stack.Children.Add(_titleText);
 
             // Line 2: Time and Live Countdown (Centered)
             var timeStack = new StackPanel
             {
                 Orientation = System.Windows.Controls.Orientation.Horizontal,
                 HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
-                Margin = new Thickness(0, 3, 0, 0)
+                Margin = new Thickness(0, 4, 0, 0)
             };
 
             _timeText = new TextBlock
             {
                 Text = "",
-                FontSize = 15,
+                FontSize = 16.5,
                 FontWeight = FontWeights.Bold,
                 Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentGold),
                 VerticalAlignment = VerticalAlignment.Center
@@ -111,11 +97,11 @@ namespace ShiaPrayerTimes
             _countdownText = new TextBlock
             {
                 Text = "",
-                FontSize = 13,
+                FontSize = 14,
                 FontWeight = FontWeights.SemiBold,
                 FontFamily = new System.Windows.Media.FontFamily("Consolas, Segoe UI"),
                 Foreground = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkTextSecondary : UIThemeHelper.LightTextSecondary),
-                Margin = new Thickness(6, 0, 6, 0),
+                Margin = new Thickness(8, 0, 8, 0),
                 VerticalAlignment = VerticalAlignment.Center
             };
             timeStack.Children.Add(_countdownText);
@@ -157,9 +143,8 @@ namespace ShiaPrayerTimes
             catch { }
         }
 
-        public void UpdateData(string icon, string title, string timeStr, string countdownStr)
+        public void UpdateData(string title, string timeStr, string countdownStr)
         {
-            _iconText.Text = icon;
             _titleText.Text = title;
             if (!string.IsNullOrEmpty(timeStr))
             {
@@ -346,7 +331,7 @@ namespace ShiaPrayerTimes
                     ? (isArLang ? string.Format("الصلاة القادمة: {0}", pName) : string.Format("Next Prayer: {0}", pName))
                     : (isArLang ? string.Format("الموعد القادم: {0}", pName) : string.Format("Next Event: {0}", pName));
 
-                _hoverFlyout.UpdateData(isActual ? "🕌 " : "⏰ ", title, _lastNextTimeStr, _lastCountdownStr);
+                _hoverFlyout.UpdateData(title, _lastNextTimeStr, _lastCountdownStr);
                 _hoverFlyout.ShowNearTray(pos);
             }
             catch { }
@@ -532,7 +517,7 @@ namespace ShiaPrayerTimes
                 // If live hover flyout is visible, update it dynamically so countdown ticks constantly!
                 if (_hoverFlyout != null && _hoverFlyout.IsVisible)
                 {
-                    _hoverFlyout.UpdateData(isActualPrayer ? "🕌 " : "⏰ ", line1, nextTimeFormatted, countdownStr);
+                    _hoverFlyout.UpdateData(line1, nextTimeFormatted, countdownStr);
                 }
             }
             catch { }
