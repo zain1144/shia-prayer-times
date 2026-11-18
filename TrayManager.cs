@@ -3,6 +3,7 @@ using System.Drawing;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
@@ -18,11 +19,36 @@ namespace ShiaPrayerTimes
         private const int WS_EX_NOACTIVATE = 0x08000000;
         private const int WS_EX_TOOLWINDOW = 0x00000080;
 
-        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
+        private const uint SWP_NOSIZE = 0x0001;
+        private const uint SWP_NOMOVE = 0x0002;
+        private const uint SWP_NOACTIVATE = 0x0010;
+        private const int SW_HIDE = 0;
+
+        [DllImport("user32.dll")]
         private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
 
-        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        [DllImport("user32.dll")]
         private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+
+        [DllImport("user32.dll")]
+        private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+
+        [DllImport("user32.dll")]
+        private static extern bool EnumWindows(EnumWindowsProc lpfn, IntPtr lParam);
+        private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        private static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
+
+        [DllImport("user32.dll")]
+        private static extern bool IsWindowVisible(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+        [DllImport("user32.dll")]
+        private static extern bool GetWindowRect(IntPtr hWnd, out TrayManager.RECT lpRect);
 
         private Border _card;
         private TextBlock _titleText;
@@ -151,7 +177,59 @@ namespace ShiaPrayerTimes
                 {
                     HideFlyout();
                 }
+                else
+                {
+                    SuppressNativeTooltips();
+                }
             };
+        }
+
+        private void SuppressNativeTooltips()
+        {
+            try
+            {
+                var helper = new System.Windows.Interop.WindowInteropHelper(this);
+                if (helper.Handle != IntPtr.Zero)
+                {
+                    SetWindowPos(helper.Handle, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+                }
+
+                double scaleX, scaleY;
+                GetDpiScale(out scaleX, out scaleY);
+                var screen = System.Windows.Forms.Screen.FromPoint(_lastHoverPos);
+                double waBottom = screen.WorkingArea.Bottom / scaleY;
+
+                EnumWindows((hWnd, lParam) =>
+                {
+                    if (IsWindowVisible(hWnd))
+                    {
+                        StringBuilder sb = new StringBuilder(64);
+                        GetClassName(hWnd, sb, 64);
+                        string cls = sb.ToString();
+                        if (cls == "Xaml_WindowedPopupClass" || cls == "tooltips_class32")
+                        {
+                            TrayManager.RECT r;
+                            if (GetWindowRect(hWnd, out r))
+                            {
+                                int w = r.right - r.left;
+                                int h = r.bottom - r.top;
+                                double dipLeft = r.left / scaleX;
+                                double dipRight = r.right / scaleX;
+                                double dipBottom = r.bottom / scaleY;
+
+                                if (w > 0 && w < 300 && h > 0 && h < 120 &&
+                                    dipRight >= _iconCenterX - 150 && dipLeft <= _iconCenterX + 150 &&
+                                    dipBottom >= waBottom - 120)
+                                {
+                                    ShowWindow(hWnd, SW_HIDE);
+                                }
+                            }
+                        }
+                    }
+                    return true;
+                }, IntPtr.Zero);
+            }
+            catch { }
         }
 
         public static void GetDpiScale(out double scaleX, out double scaleY)
@@ -283,6 +361,7 @@ namespace ShiaPrayerTimes
             }
 
             EnsureInsideScreen();
+            SuppressNativeTooltips();
 
             _autoHideTimer.Start();
         }
