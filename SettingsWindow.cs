@@ -88,6 +88,24 @@ namespace ShiaPrayerTimes
             WindowStyle = WindowStyle.None;
             ResizeMode = ResizeMode.CanResize;
 
+            // Load Window Icon
+            try
+            {
+                var asm = System.Reflection.Assembly.GetExecutingAssembly();
+                using (var stream = asm.GetManifestResourceStream("app_new.ico"))
+                {
+                    if (stream != null) Icon = System.Windows.Media.Imaging.BitmapFrame.Create(stream);
+                }
+                if (Icon == null)
+                {
+                    using (var stream = asm.GetManifestResourceStream("app.ico"))
+                    {
+                        if (stream != null) Icon = System.Windows.Media.Imaging.BitmapFrame.Create(stream);
+                    }
+                }
+            }
+            catch { }
+
             Background = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkBg : UIThemeHelper.LightBg);
             Foreground = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkTextPrimary : UIThemeHelper.LightTextPrimary);
 

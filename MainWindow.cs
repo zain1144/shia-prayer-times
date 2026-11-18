@@ -105,11 +105,43 @@ namespace ShiaPrayerTimes
             // Load Window Icon
             try
             {
-                string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "app_new.ico");
-                if (!File.Exists(iconPath)) iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "app.ico");
-                if (File.Exists(iconPath))
+                var asm = System.Reflection.Assembly.GetExecutingAssembly();
+                using (var stream = asm.GetManifestResourceStream("app_new.ico"))
                 {
-                    Icon = System.Windows.Media.Imaging.BitmapFrame.Create(new Uri(iconPath, UriKind.Absolute));
+                    if (stream != null)
+                    {
+                        Icon = System.Windows.Media.Imaging.BitmapFrame.Create(stream);
+                    }
+                }
+
+                if (Icon == null)
+                {
+                    using (var stream = asm.GetManifestResourceStream("app.ico"))
+                    {
+                        if (stream != null)
+                        {
+                            Icon = System.Windows.Media.Imaging.BitmapFrame.Create(stream);
+                        }
+                    }
+                }
+
+                if (Icon == null)
+                {
+                    string cfgIcon = Path.Combine(AppSettings.GetConfigDirectory(), "app_new.ico");
+                    if (File.Exists(cfgIcon))
+                    {
+                        Icon = System.Windows.Media.Imaging.BitmapFrame.Create(new Uri(cfgIcon, UriKind.Absolute));
+                    }
+                }
+
+                if (Icon == null)
+                {
+                    string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "app_new.ico");
+                    if (!File.Exists(iconPath)) iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "app.ico");
+                    if (File.Exists(iconPath))
+                    {
+                        Icon = System.Windows.Media.Imaging.BitmapFrame.Create(new Uri(iconPath, UriKind.Absolute));
+                    }
                 }
             }
             catch { }
@@ -983,7 +1015,7 @@ namespace ShiaPrayerTimes
                 }
 
                 // Tray tooltip & menu ALWAYS stay anchored to the true upcoming prayer & countdown!
-                _trayManager.UpdateTrayTooltipAndMenu(pNameAr, nextPrayerName, countdownStr);
+                _trayManager.UpdateTrayTooltipAndMenu(pNameAr, nextPrayerName, countdownStr, formattedTime);
             }
 
             // Highlight items in prayer schedule list ONLY when viewing today

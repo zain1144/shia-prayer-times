@@ -2,10 +2,155 @@ using System;
 using System.Drawing;
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Forms;
+using System.Windows.Media;
+using System.Windows.Media.Effects;
+using System.Windows.Threading;
 
 namespace ShiaPrayerTimes
 {
+    public class TrayHoverFlyout : Window
+    {
+        private TextBlock _iconText;
+        private TextBlock _titleText;
+        private TextBlock _countdownText;
+        private TextBlock _timeText;
+        private DispatcherTimer _autoHideTimer;
+        private System.Drawing.Point _lastHoverPos;
+
+        public TrayHoverFlyout(bool isDark, bool isAr)
+        {
+            WindowStyle = WindowStyle.None;
+            AllowsTransparency = true;
+            Background = System.Windows.Media.Brushes.Transparent;
+            Topmost = true;
+            ShowInTaskbar = false;
+            ShowActivated = false;
+            Focusable = false;
+            SizeToContent = SizeToContent.WidthAndHeight;
+            FlowDirection = isAr ? System.Windows.FlowDirection.RightToLeft : System.Windows.FlowDirection.LeftToRight;
+
+            var card = new Border
+            {
+                Background = UIThemeHelper.GetBrush(isDark ? System.Windows.Media.Color.FromRgb(26, 32, 44) : System.Windows.Media.Color.FromRgb(255, 255, 255)),
+                BorderBrush = UIThemeHelper.GetBrush(UIThemeHelper.AccentGold),
+                BorderThickness = new Thickness(1.5),
+                CornerRadius = new CornerRadius(10),
+                Padding = new Thickness(14, 10, 14, 10),
+                Effect = new DropShadowEffect
+                {
+                    Color = Colors.Black,
+                    Direction = 315,
+                    ShadowDepth = 3,
+                    Opacity = isDark ? 0.6 : 0.25,
+                    BlurRadius = 10
+                }
+            };
+
+            var stack = new StackPanel();
+
+            var headerStack = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal };
+            _iconText = new TextBlock
+            {
+                Text = "🕌 ",
+                FontSize = 14,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            headerStack.Children.Add(_iconText);
+
+            _titleText = new TextBlock
+            {
+                FontSize = 13,
+                FontWeight = FontWeights.Bold,
+                Foreground = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkTextPrimary : UIThemeHelper.LightTextPrimary),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            headerStack.Children.Add(_titleText);
+            stack.Children.Add(headerStack);
+
+            _countdownText = new TextBlock
+            {
+                FontSize = 20,
+                FontWeight = FontWeights.Bold,
+                FontFamily = new System.Windows.Media.FontFamily("Consolas, Segoe UI"),
+                Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentGold),
+                Margin = new Thickness(0, 4, 0, 4)
+            };
+            stack.Children.Add(_countdownText);
+
+            _timeText = new TextBlock
+            {
+                FontSize = 12,
+                Foreground = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkTextSecondary : UIThemeHelper.LightTextSecondary)
+            };
+            stack.Children.Add(_timeText);
+
+            card.Child = stack;
+            Content = card;
+
+            _autoHideTimer = new DispatcherTimer();
+            _autoHideTimer.Interval = TimeSpan.FromMilliseconds(250);
+            _autoHideTimer.Tick += (s, e) =>
+            {
+                var cur = System.Windows.Forms.Cursor.Position;
+                double dx = cur.X - _lastHoverPos.X;
+                double dy = cur.Y - _lastHoverPos.Y;
+                double dist = Math.Sqrt(dx * dx + dy * dy);
+
+                bool overFlyout = (cur.X >= Left && cur.X <= Left + ActualWidth &&
+                                   cur.Y >= Top && cur.Y <= Top + ActualHeight);
+
+                if (dist > 65 && !overFlyout)
+                {
+                    HideFlyout();
+                }
+            };
+        }
+
+        public void UpdateData(string icon, string title, string countdown, string timeDetail)
+        {
+            _iconText.Text = icon;
+            _titleText.Text = title;
+            _countdownText.Text = countdown;
+            _timeText.Text = timeDetail;
+        }
+
+        public void ShowAt(System.Drawing.Point mousePos)
+        {
+            _lastHoverPos = mousePos;
+
+            Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
+            double w = DesiredSize.Width > 0 ? DesiredSize.Width : 220;
+            double h = DesiredSize.Height > 0 ? DesiredSize.Height : 85;
+
+            double screenW = SystemParameters.PrimaryScreenWidth;
+            double screenH = SystemParameters.PrimaryScreenHeight;
+
+            double left = mousePos.X - (w / 2.0);
+            if (left + w > screenW - 10) left = screenW - w - 10;
+            if (left < 10) left = 10;
+
+            double top = mousePos.Y - h - 14;
+            if (top < 10) top = mousePos.Y + 24;
+
+            Left = left;
+            Top = top;
+
+            if (!IsVisible)
+            {
+                Show();
+            }
+            _autoHideTimer.Start();
+        }
+
+        public void HideFlyout()
+        {
+            _autoHideTimer.Stop();
+            Hide();
+        }
+    }
+
     public class TrayManager : IDisposable
     {
         private NotifyIcon _notifyIcon;
@@ -15,6 +160,12 @@ namespace ShiaPrayerTimes
         private ToolStripMenuItem _nextPrayerMenuItem;
         private ToolStripMenuItem _stopAudioMenuItem;
         private ToolStripMenuItem _muteMenuItem;
+        private TrayHoverFlyout _hoverFlyout;
+
+        private string _lastPrayerNameAr = "";
+        private string _lastPrayerNameEn = "";
+        private string _lastCountdownStr = "";
+        private string _lastNextTimeStr = "";
 
         public NotifyIcon NotifyIcon { get { return _notifyIcon; } }
 
@@ -31,6 +182,8 @@ namespace ShiaPrayerTimes
             LoadIcon();
 
             _notifyIcon.DoubleClick += (s, e) => ShowMainWindow();
+            _notifyIcon.MouseMove += (s, e) => OnTrayMouseMove();
+            _notifyIcon.MouseDown += (s, e) => HideHoverFlyout();
 
             BuildContextMenu();
 
@@ -43,26 +196,111 @@ namespace ShiaPrayerTimes
             };
         }
 
+        private void OnTrayMouseMove()
+        {
+            try
+            {
+                if (System.Windows.Application.Current == null) return;
+                System.Windows.Application.Current.Dispatcher.Invoke(new Action(() =>
+                {
+                    if (_hoverFlyout == null)
+                    {
+                        bool isDark = _settings.Theme == "Dark";
+                        bool isAr = _settings.Language == "ar";
+                        _hoverFlyout = new TrayHoverFlyout(isDark, isAr);
+                    }
+
+                    bool isArLang = _settings.Language == "ar";
+                    string pName = isArLang ? _lastPrayerNameAr : _lastPrayerNameEn;
+                    bool isActual = PrayerCalculator.IsActualPrayer(_lastPrayerNameEn);
+                    string title = isActual
+                        ? (isArLang ? string.Format("الصلاة القادمة: {0}", pName) : string.Format("Next Prayer: {0}", pName))
+                        : (isArLang ? string.Format("الموعد القادم: {0}", pName) : string.Format("Next Event: {0}", pName));
+
+                    string countdownText = isArLang ? string.Format("المتبقي: {0}", _lastCountdownStr) : string.Format("Remaining: {0}", _lastCountdownStr);
+                    string timeDetail = string.Format("⏰ {0}  |  📍 {1}", _lastNextTimeStr, _settings.Location != null ? _settings.Location.Name : "");
+
+                    _hoverFlyout.UpdateData(isActual ? "🕌 " : "⏰ ", title, countdownText, timeDetail);
+                    _hoverFlyout.ShowAt(System.Windows.Forms.Cursor.Position);
+                }));
+            }
+            catch { }
+        }
+
+        public void HideHoverFlyout()
+        {
+            try
+            {
+                if (_hoverFlyout != null)
+                {
+                    _hoverFlyout.HideFlyout();
+                }
+            }
+            catch { }
+        }
+
         private void LoadIcon()
         {
             try
             {
+                var asm = System.Reflection.Assembly.GetExecutingAssembly();
+
+                // 1. Try embedded manifest resource (app_new.ico or app.ico)
+                using (var stream = asm.GetManifestResourceStream("app_new.ico"))
+                {
+                    if (stream != null)
+                    {
+                        _notifyIcon.Icon = new Icon(stream);
+                        return;
+                    }
+                }
+
+                using (var stream = asm.GetManifestResourceStream("app.ico"))
+                {
+                    if (stream != null)
+                    {
+                        _notifyIcon.Icon = new Icon(stream);
+                        return;
+                    }
+                }
+
+                // 2. Try AppData extracted icon
+                string cfgIcon = Path.Combine(AppSettings.GetConfigDirectory(), "app_new.ico");
+                if (File.Exists(cfgIcon))
+                {
+                    using (var fs = new FileStream(cfgIcon, FileMode.Open, FileAccess.Read))
+                    {
+                        _notifyIcon.Icon = new Icon(fs);
+                        return;
+                    }
+                }
+
+                // 3. Try BaseDirectory
                 string appDir = AppDomain.CurrentDomain.BaseDirectory;
                 string iconPath = Path.Combine(appDir, "app_new.ico");
                 if (!File.Exists(iconPath)) iconPath = Path.Combine(appDir, "app.ico");
-
                 if (File.Exists(iconPath))
                 {
-                    byte[] bytes = File.ReadAllBytes(iconPath);
-                    using (var ms = new MemoryStream(bytes))
+                    using (var fs = new FileStream(iconPath, FileMode.Open, FileAccess.Read))
                     {
-                        _notifyIcon.Icon = new Icon(ms);
+                        _notifyIcon.Icon = new Icon(fs);
+                        return;
                     }
                 }
-                else
+
+                // 4. Try Win32 associated icon extracted from the running EXE itself
+                string exePath = asm.Location;
+                if (!string.IsNullOrEmpty(exePath) && File.Exists(exePath))
                 {
-                    _notifyIcon.Icon = SystemIcons.Application;
+                    Icon exeIcon = Icon.ExtractAssociatedIcon(exePath);
+                    if (exeIcon != null)
+                    {
+                        _notifyIcon.Icon = exeIcon;
+                        return;
+                    }
                 }
+
+                _notifyIcon.Icon = SystemIcons.Application;
             }
             catch
             {
@@ -134,10 +372,15 @@ namespace ShiaPrayerTimes
             }
         }
 
-        public void UpdateTrayTooltipAndMenu(string prayerNameAr, string prayerNameEn, string countdownStr)
+        public void UpdateTrayTooltipAndMenu(string prayerNameAr, string prayerNameEn, string countdownStr, string nextTimeFormatted = "")
         {
             try
             {
+                _lastPrayerNameAr = prayerNameAr;
+                _lastPrayerNameEn = prayerNameEn;
+                _lastCountdownStr = countdownStr;
+                _lastNextTimeStr = nextTimeFormatted;
+
                 bool isAr = _settings.Language == "ar";
                 string pName = isAr ? prayerNameAr : prayerNameEn;
                 bool isActualPrayer = PrayerCalculator.IsActualPrayer(prayerNameEn);
@@ -150,6 +393,21 @@ namespace ShiaPrayerTimes
                     _nextPrayerMenuItem.Text = text;
                 }
 
+                // If live hover flyout is visible, update it dynamically so countdown ticks constantly!
+                if (_hoverFlyout != null && _hoverFlyout.IsVisible)
+                {
+                    System.Windows.Application.Current.Dispatcher.Invoke(new Action(() =>
+                    {
+                        string title = isActualPrayer
+                            ? (isAr ? string.Format("الصلاة القادمة: {0}", pName) : string.Format("Next Prayer: {0}", pName))
+                            : (isAr ? string.Format("الموعد القادم: {0}", pName) : string.Format("Next Event: {0}", pName));
+
+                        string countdownText = isAr ? string.Format("المتبقي: {0}", countdownStr) : string.Format("Remaining: {0}", countdownStr);
+                        string timeDetail = string.Format("⏰ {0}  |  📍 {1}", _lastNextTimeStr, _settings.Location != null ? _settings.Location.Name : "");
+                        _hoverFlyout.UpdateData(isActualPrayer ? "🕌 " : "⏰ ", title, countdownText, timeDetail);
+                    }));
+                }
+
                 // NotifyIcon.Text max length is 63 chars in Windows Forms
                 string tip = string.Format("{0}: {1}", pName, countdownStr);
                 if (tip.Length > 63) tip = tip.Substring(0, 63);
@@ -160,6 +418,7 @@ namespace ShiaPrayerTimes
 
         public void ShowMainWindow()
         {
+            HideHoverFlyout();
             if (_mainWindow != null)
             {
                 _mainWindow.Show();
@@ -173,6 +432,11 @@ namespace ShiaPrayerTimes
 
         public void Dispose()
         {
+            if (_hoverFlyout != null)
+            {
+                try { _hoverFlyout.Close(); } catch { }
+                _hoverFlyout = null;
+            }
             if (_notifyIcon != null)
             {
                 _notifyIcon.Visible = false;

@@ -25,9 +25,18 @@ if ($running) {
 $icon = "app_new.ico"
 if (-not (Test-Path $icon)) { $icon = "app.ico" }
 
+$resLines = [System.Collections.Generic.List[string]]::new()
+
+if (Test-Path $icon) {
+    $resLines.Add("/resource:`"$icon`",app_new.ico")
+    Write-Host "Embedded icon resource: $icon -> app_new.ico" -ForegroundColor Green
+}
+if (Test-Path "app.ico") {
+    $resLines.Add("/resource:`"app.ico`",app.ico")
+}
+
 # Collect resources from Audio directory
 $audioDir = Join-Path $PSScriptRoot "Audio"
-$resLines = [System.Collections.Generic.List[string]]::new()
 
 if (Test-Path $audioDir) {
     $soundsTxt = Join-Path $audioDir "sounds.txt"

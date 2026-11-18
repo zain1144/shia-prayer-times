@@ -213,6 +213,9 @@ namespace ShiaPrayerTimes
 
         public void InitDefaultSounds()
         {
+            ExtractEmbeddedAudioDefaults();
+            ExtractEmbeddedIcon();
+
             if (AdhanLibrary == null) AdhanLibrary = new List<AdhanSound>();
             if (AdhanLibrary.Count == 0)
             {
@@ -223,12 +226,96 @@ namespace ShiaPrayerTimes
                 string chimePath = Path.Combine(baseDir, "Audio", "chime.wav");
                 if (!File.Exists(chimePath)) chimePath = Path.Combine(GetConfigDirectory(), "Audio", "chime.wav");
 
-                AdhanLibrary.Add(new AdhanSound("default", "الأذان الافتراضي (Default)", "", true));
+                string almusawiPath = Path.Combine(baseDir, "Audio", "almusawi_adhan.mp3");
+                if (!File.Exists(almusawiPath)) almusawiPath = Path.Combine(GetConfigDirectory(), "Audio", "almusawi_adhan.mp3");
+
+                string defaultAdhanPath = File.Exists(almusawiPath) ? almusawiPath : tonePath;
+                string defaultAdhanName = File.Exists(almusawiPath) ? "أذان السيد هاني الموسوي" : "نغمة الأذان الافتراضية";
+
+                AdhanLibrary.Add(new AdhanSound("default", defaultAdhanName, defaultAdhanPath, true));
                 AdhanLibrary.Add(new AdhanSound("tone", "نغمة الأذان (Tone)", tonePath, true));
                 AdhanLibrary.Add(new AdhanSound("chime", "نغمة هادئة (Chime)", chimePath, true));
-                AdhanLibrary.Add(new AdhanSound("karbala", "أذان العتبة الحسينية - كربلاء", "", false));
-                AdhanLibrary.Add(new AdhanSound("najaf", "أذان العتبة العلوية - النجف", "", false));
-                AdhanLibrary.Add(new AdhanSound("fajr", "أذان الفجر المخصوص (Fajr)", "", false));
+                if (File.Exists(almusawiPath))
+                {
+                    AdhanLibrary.Add(new AdhanSound("almusawi_adhan", "أذان السيد هاني الموسوي", almusawiPath, true));
+                }
+            }
+        }
+
+        public static string EnsureExtractedResource(string fileName)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(fileName)) return "";
+                string targetDir = Path.Combine(GetConfigDirectory(), "Audio");
+                if (!Directory.Exists(targetDir)) Directory.CreateDirectory(targetDir);
+
+                string dest = Path.Combine(targetDir, fileName);
+                if (File.Exists(dest) && new FileInfo(dest).Length > 0)
+                {
+                    return dest;
+                }
+
+                var asm = System.Reflection.Assembly.GetExecutingAssembly();
+                string resName = "Audio." + fileName;
+                using (var stream = asm.GetManifestResourceStream(resName))
+                {
+                    if (stream != null)
+                    {
+                        using (var fs = new FileStream(dest, FileMode.Create, FileAccess.Write))
+                        {
+                            byte[] buffer = new byte[8192];
+                            int read;
+                            while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
+                            {
+                                fs.Write(buffer, 0, read);
+                            }
+                        }
+                        return dest;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("EnsureExtractedResource error: " + ex.Message);
+            }
+            return "";
+        }
+
+        public static void ExtractEmbeddedIcon()
+        {
+            try
+            {
+                string targetDir = GetConfigDirectory();
+                string dest = Path.Combine(targetDir, "app_new.ico");
+                if (!File.Exists(dest) || new FileInfo(dest).Length == 0)
+                {
+                    var asm = System.Reflection.Assembly.GetExecutingAssembly();
+                    string[] iconNames = { "app_new.ico", "app.ico" };
+                    foreach (var name in iconNames)
+                    {
+                        using (var stream = asm.GetManifestResourceStream(name))
+                        {
+                            if (stream != null)
+                            {
+                                using (var fs = new FileStream(dest, FileMode.Create, FileAccess.Write))
+                                {
+                                    byte[] buffer = new byte[8192];
+                                    int read;
+                                    while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
+                                    {
+                                        fs.Write(buffer, 0, read);
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("ExtractEmbeddedIcon error: " + ex.Message);
             }
         }
 
@@ -360,6 +447,7 @@ namespace ShiaPrayerTimes
                         {
                             string localPath = Path.Combine(baseAudio, fileName);
                             if (File.Exists(localPath)) filePath = localPath;
+                            else filePath = EnsureExtractedResource(fileName);
                         }
 
                         string displayName = Path.GetFileNameWithoutExtension(fileName);
@@ -424,6 +512,22 @@ namespace ShiaPrayerTimes
                         }
                     }
                 }
+
+                // Ensure default adhan has a valid real file path
+                var defSound = AdhanLibrary.Find(x => x.Id == "default");
+                if (defSound != null)
+                {
+                    if (string.IsNullOrEmpty(defSound.FilePath) || !File.Exists(defSound.FilePath))
+                    {
+                        string p = EnsureExtractedResource("almusawi_adhan.mp3");
+                        if (string.IsNullOrEmpty(p) || !File.Exists(p)) p = EnsureExtractedResource("adhan_tone.wav");
+                        defSound.FilePath = p;
+                        if (!string.IsNullOrEmpty(p) && p.EndsWith("almusawi_adhan.mp3", StringComparison.OrdinalIgnoreCase))
+                        {
+                            defSound.Name = "أذان السيد هاني الموسوي";
+                        }
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -449,6 +553,9 @@ namespace ShiaPrayerTimes
 
         public static AppSettings Load()
         {
+            ExtractEmbeddedAudioDefaults();
+            ExtractEmbeddedIcon();
+
             try
             {
                 string path = GetConfigFilePath();
@@ -471,6 +578,7 @@ namespace ShiaPrayerTimes
             }
 
             var defaultSettings = new AppSettings();
+            defaultSettings.EnsureDefaults();
             defaultSettings.Save();
             return defaultSettings;
         }
@@ -703,31 +811,45 @@ namespace ShiaPrayerTimes
                 return customAudioPath;
             }
 
+            string targetDir = Path.Combine(GetConfigDirectory(), "Audio");
+            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+
+            // 1. Check AdhanLibrary for matching soundId
             if (!string.IsNullOrEmpty(soundId) && AdhanLibrary != null)
             {
                 foreach (var s in AdhanLibrary)
                 {
-                    if (s.Id == soundId)
+                    if (string.Equals(s.Id, soundId, StringComparison.OrdinalIgnoreCase))
                     {
                         if (!string.IsNullOrEmpty(s.FilePath) && File.Exists(s.FilePath))
                         {
                             return s.FilePath;
                         }
-                        if (s.Id == "tone")
+
+                        // Try extracting by filename if path lost or machine changed
+                        if (!string.IsNullOrEmpty(s.FilePath))
                         {
-                            string appTone = Path.Combine(GetConfigDirectory(), "Audio", "adhan_tone.wav");
-                            if (File.Exists(appTone)) return appTone;
-                        }
-                        else if (s.Id == "chime")
-                        {
-                            string appChime = Path.Combine(GetConfigDirectory(), "Audio", "chime.wav");
-                            if (File.Exists(appChime)) return appChime;
+                            string fname = Path.GetFileName(s.FilePath);
+                            string extracted = EnsureExtractedResource(fname);
+                            if (!string.IsNullOrEmpty(extracted) && File.Exists(extracted)) return extracted;
                         }
                     }
                 }
             }
 
-            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            // 2. Fallbacks by soundId name
+            if (string.Equals(soundId, "chime", StringComparison.OrdinalIgnoreCase))
+            {
+                string p = EnsureExtractedResource("chime.wav");
+                if (File.Exists(p)) return p;
+            }
+            else if (string.Equals(soundId, "tone", StringComparison.OrdinalIgnoreCase) || string.Equals(soundId, "adhan_tone", StringComparison.OrdinalIgnoreCase))
+            {
+                string p = EnsureExtractedResource("adhan_tone.wav");
+                if (File.Exists(p)) return p;
+            }
+
+            // 3. User configured default paths
             if (prayerName.Equals("Fajr", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(DefaultFajrAdhanPath) && File.Exists(DefaultFajrAdhanPath))
             {
                 return DefaultFajrAdhanPath;
@@ -738,17 +860,32 @@ namespace ShiaPrayerTimes
                 return DefaultAdhanPath;
             }
 
-            string defTone = Path.Combine(baseDir, "Audio", "adhan_tone.wav");
-            if (File.Exists(defTone)) return defTone;
+            // 4. Default Adhan: Try almusawi_adhan.mp3 first!
+            string almusawi = EnsureExtractedResource("almusawi_adhan.mp3");
+            if (!string.IsNullOrEmpty(almusawi) && File.Exists(almusawi)) return almusawi;
 
-            string cfgTone = Path.Combine(GetConfigDirectory(), "Audio", "adhan_tone.wav");
-            if (File.Exists(cfgTone)) return cfgTone;
+            // 5. Check if any sound in AdhanLibrary has a valid audio file
+            if (AdhanLibrary != null)
+            {
+                foreach (var s in AdhanLibrary)
+                {
+                    if (s.Id.Equals("chime", StringComparison.OrdinalIgnoreCase)) continue;
+                    if (!string.IsNullOrEmpty(s.FilePath) && File.Exists(s.FilePath)) return s.FilePath;
+                    if (!string.IsNullOrEmpty(s.FilePath))
+                    {
+                        string ext = EnsureExtractedResource(Path.GetFileName(s.FilePath));
+                        if (!string.IsNullOrEmpty(ext) && File.Exists(ext)) return ext;
+                    }
+                }
+            }
 
-            string defChime = Path.Combine(baseDir, "Audio", "chime.wav");
-            if (File.Exists(defChime)) return defChime;
+            // 6. Tone fallback
+            string tone = EnsureExtractedResource("adhan_tone.wav");
+            if (!string.IsNullOrEmpty(tone) && File.Exists(tone)) return tone;
 
-            string cfgChime = Path.Combine(GetConfigDirectory(), "Audio", "chime.wav");
-            if (File.Exists(cfgChime)) return cfgChime;
+            // 7. Last resort: chime.wav
+            string chime = EnsureExtractedResource("chime.wav");
+            if (!string.IsNullOrEmpty(chime) && File.Exists(chime)) return chime;
 
             return "";
         }

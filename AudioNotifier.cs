@@ -333,6 +333,13 @@ namespace ShiaPrayerTimes
                 : string.Format("It is now time for {0} Adhan ({1})", prayerNameEn, timeStr);
 
             ShowNotification(title, body, "📢");
+
+            if ((string.IsNullOrEmpty(soundId) || soundId == "default") && _settings.Prayers != null && _settings.Prayers.ContainsKey(prayerNameEn))
+            {
+                var cfg = _settings.Prayers[prayerNameEn];
+                if (!string.IsNullOrEmpty(cfg.SoundId)) soundId = cfg.SoundId;
+            }
+
             PlayAdhan(prayerNameEn, soundId, "");
         }
 
