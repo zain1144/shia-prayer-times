@@ -210,34 +210,34 @@ namespace ShiaPrayerTimes
             double boundsBottom = screen.Bounds.Bottom / scaleY;
 
             double left = dipMouseX - (w / 2.0);
-            double top = waBottom - h - 8;
+            double top = waBottom - h - 2;
 
             if (waBottom < boundsBottom)
             {
-                top = waBottom - h - 8;
+                top = waBottom - h - 2;
                 left = dipMouseX - (w / 2.0);
             }
             else if (waTop > boundsTop)
             {
-                top = waTop + 8;
+                top = waTop + 2;
                 left = dipMouseX - (w / 2.0);
             }
             else if (waRight < boundsRight)
             {
-                left = waRight - w - 8;
+                left = waRight - w - 2;
                 top = dipMouseY - (h / 2.0);
             }
             else if (waLeft > boundsLeft)
             {
-                left = waLeft + 8;
+                left = waLeft + 2;
                 top = dipMouseY - (h / 2.0);
             }
 
             // Strictly clamp inside the working area of the monitor where the cursor is!
             if (left + w > waRight - 8) left = waRight - w - 8;
             if (left < waLeft + 8) left = waLeft + 8;
-            if (top + h > waBottom - 6) top = waBottom - h - 6;
-            if (top < waTop + 6) top = waTop + 6;
+            if (top + h > waBottom - 2) top = waBottom - h - 2;
+            if (top < waTop + 2) top = waTop + 2;
 
             Left = left;
             Top = top;
@@ -276,13 +276,13 @@ namespace ShiaPrayerTimes
                 {
                     Left = waLeft + 8;
                 }
-                if (Top + curH > waBottom - 6)
+                if (Top + curH > waBottom - 2)
                 {
-                    Top = waBottom - curH - 6;
+                    Top = waBottom - curH - 2;
                 }
-                if (Top < waTop + 6)
+                if (Top < waTop + 2)
                 {
-                    Top = waTop + 6;
+                    Top = waTop + 2;
                 }
             }
             catch { }
@@ -332,9 +332,9 @@ namespace ShiaPrayerTimes
             bool isAr = _settings.Language == "ar";
             _hoverFlyout = new TrayHoverFlyout(isDark, isAr);
 
-            // Hover stabilization timer (250ms delay to settle mouse before showing)
+            // Hover stabilization timer (180ms delay to settle mouse before showing, beats Windows 11 400ms tooltip)
             _hoverTimer = new DispatcherTimer(DispatcherPriority.Normal);
-            _hoverTimer.Interval = TimeSpan.FromMilliseconds(250);
+            _hoverTimer.Interval = TimeSpan.FromMilliseconds(180);
             _hoverTimer.Tick += (s, e) =>
             {
                 _hoverTimer.Stop();
