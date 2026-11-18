@@ -28,7 +28,8 @@ namespace ShiaPrayerTimes
             ShowInTaskbar = false;
             ShowActivated = false;
             Focusable = false;
-            SizeToContent = SizeToContent.WidthAndHeight;
+            Width = 240;
+            Height = 90;
             FlowDirection = isAr ? System.Windows.FlowDirection.RightToLeft : System.Windows.FlowDirection.LeftToRight;
 
             var card = new Border
@@ -37,7 +38,7 @@ namespace ShiaPrayerTimes
                 BorderBrush = UIThemeHelper.GetBrush(UIThemeHelper.AccentGold),
                 BorderThickness = new Thickness(1.5),
                 CornerRadius = new CornerRadius(10),
-                Padding = new Thickness(14, 10, 14, 10),
+                Padding = new Thickness(14, 8, 14, 8),
                 Effect = new DropShadowEffect
                 {
                     Color = Colors.Black,
@@ -54,14 +55,15 @@ namespace ShiaPrayerTimes
             _iconText = new TextBlock
             {
                 Text = "🕌 ",
-                FontSize = 14,
+                FontSize = 13,
                 VerticalAlignment = VerticalAlignment.Center
             };
             headerStack.Children.Add(_iconText);
 
             _titleText = new TextBlock
             {
-                FontSize = 13,
+                Text = isAr ? "الصلاة القادمة" : "Next Prayer",
+                FontSize = 12,
                 FontWeight = FontWeights.Bold,
                 Foreground = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkTextPrimary : UIThemeHelper.LightTextPrimary),
                 VerticalAlignment = VerticalAlignment.Center
@@ -71,17 +73,19 @@ namespace ShiaPrayerTimes
 
             _countdownText = new TextBlock
             {
-                FontSize = 20,
+                Text = "00:00:00",
+                FontSize = 21,
                 FontWeight = FontWeights.Bold,
                 FontFamily = new System.Windows.Media.FontFamily("Consolas, Segoe UI"),
                 Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentGold),
-                Margin = new Thickness(0, 4, 0, 4)
+                Margin = new Thickness(0, 2, 0, 2)
             };
             stack.Children.Add(_countdownText);
 
             _timeText = new TextBlock
             {
-                FontSize = 12,
+                Text = "",
+                FontSize = 11,
                 Foreground = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkTextSecondary : UIThemeHelper.LightTextSecondary)
             };
             stack.Children.Add(_timeText);
@@ -89,8 +93,8 @@ namespace ShiaPrayerTimes
             card.Child = stack;
             Content = card;
 
-            _autoHideTimer = new DispatcherTimer();
-            _autoHideTimer.Interval = TimeSpan.FromMilliseconds(250);
+            _autoHideTimer = new DispatcherTimer(DispatcherPriority.Normal);
+            _autoHideTimer.Interval = TimeSpan.FromMilliseconds(120);
             _autoHideTimer.Tick += (s, e) =>
             {
                 var cur = System.Windows.Forms.Cursor.Position;
@@ -101,7 +105,7 @@ namespace ShiaPrayerTimes
                 bool overFlyout = (cur.X >= Left && cur.X <= Left + ActualWidth &&
                                    cur.Y >= Top && cur.Y <= Top + ActualHeight);
 
-                if (dist > 65 && !overFlyout)
+                if (dist > 60 && !overFlyout)
                 {
                     HideFlyout();
                 }
@@ -120,19 +124,18 @@ namespace ShiaPrayerTimes
         {
             _lastHoverPos = mousePos;
 
-            Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
-            double w = DesiredSize.Width > 0 ? DesiredSize.Width : 220;
-            double h = DesiredSize.Height > 0 ? DesiredSize.Height : 85;
+            double w = 240;
+            double h = 90;
 
             double screenW = SystemParameters.PrimaryScreenWidth;
             double screenH = SystemParameters.PrimaryScreenHeight;
 
             double left = mousePos.X - (w / 2.0);
-            if (left + w > screenW - 10) left = screenW - w - 10;
-            if (left < 10) left = 10;
+            if (left + w > screenW - 8) left = screenW - w - 8;
+            if (left < 8) left = 8;
 
-            double top = mousePos.Y - h - 14;
-            if (top < 10) top = mousePos.Y + 24;
+            double top = mousePos.Y - h - 10;
+            if (top < 10) top = mousePos.Y + 22;
 
             Left = left;
             Top = top;
@@ -177,9 +180,14 @@ namespace ShiaPrayerTimes
 
             _notifyIcon = new NotifyIcon();
             _notifyIcon.Visible = true;
-            _notifyIcon.Text = "أوقات الصلاة الشيعية - Shia Prayer Times";
+            _notifyIcon.Text = ""; // Keep empty so Windows Explorer doesn't trigger its sluggish 1-second tooltip delay!
 
             LoadIcon();
+
+            // Pre-create and warm up the hover flyout immediately at startup for instantaneous 0ms display!
+            bool isDark = _settings.Theme == "Dark";
+            bool isAr = _settings.Language == "ar";
+            _hoverFlyout = new TrayHoverFlyout(isDark, isAr);
 
             _notifyIcon.DoubleClick += (s, e) => ShowMainWindow();
             _notifyIcon.MouseMove += (s, e) => OnTrayMouseMove();
@@ -200,29 +208,26 @@ namespace ShiaPrayerTimes
         {
             try
             {
-                if (System.Windows.Application.Current == null) return;
-                System.Windows.Application.Current.Dispatcher.Invoke(new Action(() =>
+                var cur = System.Windows.Forms.Cursor.Position;
+                if (_hoverFlyout == null)
                 {
-                    if (_hoverFlyout == null)
-                    {
-                        bool isDark = _settings.Theme == "Dark";
-                        bool isAr = _settings.Language == "ar";
-                        _hoverFlyout = new TrayHoverFlyout(isDark, isAr);
-                    }
+                    bool isDark = _settings.Theme == "Dark";
+                    bool isAr = _settings.Language == "ar";
+                    _hoverFlyout = new TrayHoverFlyout(isDark, isAr);
+                }
 
-                    bool isArLang = _settings.Language == "ar";
-                    string pName = isArLang ? _lastPrayerNameAr : _lastPrayerNameEn;
-                    bool isActual = PrayerCalculator.IsActualPrayer(_lastPrayerNameEn);
-                    string title = isActual
-                        ? (isArLang ? string.Format("الصلاة القادمة: {0}", pName) : string.Format("Next Prayer: {0}", pName))
-                        : (isArLang ? string.Format("الموعد القادم: {0}", pName) : string.Format("Next Event: {0}", pName));
+                bool isArLang = _settings.Language == "ar";
+                string pName = isArLang ? _lastPrayerNameAr : _lastPrayerNameEn;
+                bool isActual = PrayerCalculator.IsActualPrayer(_lastPrayerNameEn);
+                string title = isActual
+                    ? (isArLang ? string.Format("الصلاة القادمة: {0}", pName) : string.Format("Next Prayer: {0}", pName))
+                    : (isArLang ? string.Format("الموعد القادم: {0}", pName) : string.Format("Next Event: {0}", pName));
 
-                    string countdownText = isArLang ? string.Format("المتبقي: {0}", _lastCountdownStr) : string.Format("Remaining: {0}", _lastCountdownStr);
-                    string timeDetail = string.Format("⏰ {0}  |  📍 {1}", _lastNextTimeStr, _settings.Location != null ? _settings.Location.Name : "");
+                string countdownText = isArLang ? string.Format("المتبقي: {0}", _lastCountdownStr) : string.Format("Remaining: {0}", _lastCountdownStr);
+                string timeDetail = string.Format("⏰ {0}  |  📍 {1}", _lastNextTimeStr, _settings.Location != null ? _settings.Location.Name : "");
 
-                    _hoverFlyout.UpdateData(isActual ? "🕌 " : "⏰ ", title, countdownText, timeDetail);
-                    _hoverFlyout.ShowAt(System.Windows.Forms.Cursor.Position);
-                }));
+                _hoverFlyout.UpdateData(isActual ? "🕌 " : "⏰ ", title, countdownText, timeDetail);
+                _hoverFlyout.ShowAt(cur);
             }
             catch { }
         }
@@ -396,22 +401,14 @@ namespace ShiaPrayerTimes
                 // If live hover flyout is visible, update it dynamically so countdown ticks constantly!
                 if (_hoverFlyout != null && _hoverFlyout.IsVisible)
                 {
-                    System.Windows.Application.Current.Dispatcher.Invoke(new Action(() =>
-                    {
-                        string title = isActualPrayer
-                            ? (isAr ? string.Format("الصلاة القادمة: {0}", pName) : string.Format("Next Prayer: {0}", pName))
-                            : (isAr ? string.Format("الموعد القادم: {0}", pName) : string.Format("Next Event: {0}", pName));
+                    string title = isActualPrayer
+                        ? (isAr ? string.Format("الصلاة القادمة: {0}", pName) : string.Format("Next Prayer: {0}", pName))
+                        : (isAr ? string.Format("الموعد القادم: {0}", pName) : string.Format("Next Event: {0}", pName));
 
-                        string countdownText = isAr ? string.Format("المتبقي: {0}", countdownStr) : string.Format("Remaining: {0}", countdownStr);
-                        string timeDetail = string.Format("⏰ {0}  |  📍 {1}", _lastNextTimeStr, _settings.Location != null ? _settings.Location.Name : "");
-                        _hoverFlyout.UpdateData(isActualPrayer ? "🕌 " : "⏰ ", title, countdownText, timeDetail);
-                    }));
+                    string countdownText = isAr ? string.Format("المتبقي: {0}", countdownStr) : string.Format("Remaining: {0}", countdownStr);
+                    string timeDetail = string.Format("⏰ {0}  |  📍 {1}", _lastNextTimeStr, _settings.Location != null ? _settings.Location.Name : "");
+                    _hoverFlyout.UpdateData(isActualPrayer ? "🕌 " : "⏰ ", title, countdownText, timeDetail);
                 }
-
-                // NotifyIcon.Text max length is 63 chars in Windows Forms
-                string tip = string.Format("{0}: {1}", pName, countdownStr);
-                if (tip.Length > 63) tip = tip.Substring(0, 63);
-                _notifyIcon.Text = tip;
             }
             catch { }
         }
