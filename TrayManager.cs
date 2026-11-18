@@ -38,8 +38,8 @@ namespace ShiaPrayerTimes
             ShowInTaskbar = false;
             ShowActivated = false;
             Focusable = false;
-            Width = 220;
-            Height = 65;
+            SizeToContent = SizeToContent.WidthAndHeight;
+            MinWidth = 175;
             FlowDirection = isAr ? System.Windows.FlowDirection.RightToLeft : System.Windows.FlowDirection.LeftToRight;
 
             var card = new Border
@@ -48,7 +48,7 @@ namespace ShiaPrayerTimes
                 BorderBrush = UIThemeHelper.GetBrush(UIThemeHelper.AccentGold),
                 BorderThickness = new Thickness(1.5),
                 CornerRadius = new CornerRadius(10),
-                Padding = new Thickness(12, 8, 12, 8),
+                Padding = new Thickness(14, 8, 14, 8),
                 Effect = new DropShadowEffect
                 {
                     Color = Colors.Black,
@@ -59,14 +59,22 @@ namespace ShiaPrayerTimes
                 }
             };
 
-            var stack = new StackPanel();
+            var stack = new StackPanel
+            {
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+                VerticalAlignment = System.Windows.VerticalAlignment.Center
+            };
 
-            // Line 1: Prayer / Event Title
-            var headerStack = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal };
+            // Line 1: Prayer / Event Title (Centered)
+            var headerStack = new StackPanel
+            {
+                Orientation = System.Windows.Controls.Orientation.Horizontal,
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Center
+            };
             _iconText = new TextBlock
             {
                 Text = "🕌 ",
-                FontSize = 13,
+                FontSize = 13.5,
                 VerticalAlignment = VerticalAlignment.Center
             };
             headerStack.Children.Add(_iconText);
@@ -74,7 +82,7 @@ namespace ShiaPrayerTimes
             _titleText = new TextBlock
             {
                 Text = isAr ? "الصلاة القادمة" : "Next Prayer",
-                FontSize = 12.5,
+                FontSize = 13,
                 FontWeight = FontWeights.Bold,
                 Foreground = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkTextPrimary : UIThemeHelper.LightTextPrimary),
                 VerticalAlignment = VerticalAlignment.Center
@@ -82,13 +90,18 @@ namespace ShiaPrayerTimes
             headerStack.Children.Add(_titleText);
             stack.Children.Add(headerStack);
 
-            // Line 2: Time and Live Countdown
-            var timeStack = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, Margin = new Thickness(0, 3, 0, 0) };
+            // Line 2: Time and Live Countdown (Centered)
+            var timeStack = new StackPanel
+            {
+                Orientation = System.Windows.Controls.Orientation.Horizontal,
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+                Margin = new Thickness(0, 3, 0, 0)
+            };
 
             _timeText = new TextBlock
             {
                 Text = "",
-                FontSize = 14,
+                FontSize = 15,
                 FontWeight = FontWeights.Bold,
                 Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentGold),
                 VerticalAlignment = VerticalAlignment.Center
@@ -98,7 +111,7 @@ namespace ShiaPrayerTimes
             _countdownText = new TextBlock
             {
                 Text = "",
-                FontSize = 12,
+                FontSize = 13,
                 FontWeight = FontWeights.SemiBold,
                 FontFamily = new System.Windows.Media.FontFamily("Consolas, Segoe UI"),
                 Foreground = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkTextSecondary : UIThemeHelper.LightTextSecondary),
@@ -112,7 +125,7 @@ namespace ShiaPrayerTimes
             Content = card;
 
             _autoHideTimer = new DispatcherTimer(DispatcherPriority.Normal);
-            _autoHideTimer.Interval = TimeSpan.FromMilliseconds(200);
+            _autoHideTimer.Interval = TimeSpan.FromMilliseconds(150);
             _autoHideTimer.Tick += (s, e) =>
             {
                 var cur = System.Windows.Forms.Cursor.Position;
@@ -123,8 +136,8 @@ namespace ShiaPrayerTimes
                 bool overFlyout = (cur.X >= Left && cur.X <= Left + ActualWidth &&
                                    cur.Y >= Top && cur.Y <= Top + ActualHeight);
 
-                // Keep open if mouse is hovering over the flyout card OR remaining near the tray area (120px)
-                if (dist > 120 && !overFlyout)
+                // Keep open if mouse is hovering over the flyout card OR remaining near the tray area (100px)
+                if (dist > 100 && !overFlyout)
                 {
                     HideFlyout();
                 }
@@ -164,11 +177,14 @@ namespace ShiaPrayerTimes
         {
             _lastHoverPos = mousePos;
 
+            UpdateLayout();
+            Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
+            double w = DesiredSize.Width > 0 ? DesiredSize.Width : 180;
+            double h = DesiredSize.Height > 0 ? DesiredSize.Height : 55;
+
             var wa = SystemParameters.WorkArea;
             double screenW = SystemParameters.PrimaryScreenWidth;
             double screenH = SystemParameters.PrimaryScreenHeight;
-            double w = Width;
-            double h = Height;
 
             double left = mousePos.X - (w / 2.0);
             double top = wa.Bottom - h - 10;
@@ -226,6 +242,8 @@ namespace ShiaPrayerTimes
         private ToolStripMenuItem _stopAudioMenuItem;
         private ToolStripMenuItem _muteMenuItem;
         private TrayHoverFlyout _hoverFlyout;
+        private DispatcherTimer _hoverTimer;
+        private System.Drawing.Point _pendingHoverPos;
 
         private string _lastPrayerNameAr = "";
         private string _lastPrayerNameEn = "";
@@ -246,10 +264,32 @@ namespace ShiaPrayerTimes
 
             LoadIcon();
 
-            // Pre-create and warm up the hover flyout immediately at startup for instantaneous 0ms display!
+            // Pre-create and warm up the hover flyout immediately at startup
             bool isDark = _settings.Theme == "Dark";
             bool isAr = _settings.Language == "ar";
             _hoverFlyout = new TrayHoverFlyout(isDark, isAr);
+
+            // Hover stabilization timer (300ms delay to settle mouse before showing)
+            _hoverTimer = new DispatcherTimer(DispatcherPriority.Normal);
+            _hoverTimer.Interval = TimeSpan.FromMilliseconds(300);
+            _hoverTimer.Tick += (s, e) =>
+            {
+                _hoverTimer.Stop();
+                try
+                {
+                    var cur = System.Windows.Forms.Cursor.Position;
+                    double dx = cur.X - _pendingHoverPos.X;
+                    double dy = cur.Y - _pendingHoverPos.Y;
+                    double dist = Math.Sqrt(dx * dx + dy * dy);
+
+                    // Check that the mouse has settled (stayed within 40px of where it stopped)
+                    if (dist < 40)
+                    {
+                        ShowHoverFlyoutAt(cur);
+                    }
+                }
+                catch { }
+            };
 
             _notifyIcon.DoubleClick += (s, e) => ShowMainWindow();
             _notifyIcon.MouseMove += (s, e) => OnTrayMouseMove();
@@ -271,6 +311,25 @@ namespace ShiaPrayerTimes
             try
             {
                 var cur = System.Windows.Forms.Cursor.Position;
+                _pendingHoverPos = cur;
+
+                // If flyout is already visible, keep it visible
+                if (_hoverFlyout != null && _hoverFlyout.IsVisible)
+                {
+                    return;
+                }
+
+                // Restart hover delay timer (waits for mouse to settle, but faster than Windows default)
+                _hoverTimer.Stop();
+                _hoverTimer.Start();
+            }
+            catch { }
+        }
+
+        private void ShowHoverFlyoutAt(System.Drawing.Point pos)
+        {
+            try
+            {
                 if (_hoverFlyout == null)
                 {
                     bool isDark = _settings.Theme == "Dark";
@@ -288,7 +347,7 @@ namespace ShiaPrayerTimes
                     : (isArLang ? string.Format("الموعد القادم: {0}", pName) : string.Format("Next Event: {0}", pName));
 
                 _hoverFlyout.UpdateData(isActual ? "🕌 " : "⏰ ", title, _lastNextTimeStr, _lastCountdownStr);
-                _hoverFlyout.ShowNearTray(cur);
+                _hoverFlyout.ShowNearTray(pos);
             }
             catch { }
         }
@@ -297,6 +356,10 @@ namespace ShiaPrayerTimes
         {
             try
             {
+                if (_hoverTimer != null)
+                {
+                    _hoverTimer.Stop();
+                }
                 if (_hoverFlyout != null)
                 {
                     _hoverFlyout.HideFlyout();
@@ -496,6 +559,11 @@ namespace ShiaPrayerTimes
 
         public void Dispose()
         {
+            if (_hoverTimer != null)
+            {
+                _hoverTimer.Stop();
+                _hoverTimer = null;
+            }
             if (_hoverFlyout != null)
             {
                 try { _hoverFlyout.Close(); } catch { }
