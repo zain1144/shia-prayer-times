@@ -24,8 +24,8 @@ namespace ShiaPrayerTimes
 
         private TextBlock _iconText;
         private TextBlock _titleText;
-        private TextBlock _countdownText;
         private TextBlock _timeText;
+        private TextBlock _countdownText;
         private DispatcherTimer _autoHideTimer;
         private System.Drawing.Point _lastHoverPos;
 
@@ -38,8 +38,8 @@ namespace ShiaPrayerTimes
             ShowInTaskbar = false;
             ShowActivated = false;
             Focusable = false;
-            Width = 240;
-            Height = 90;
+            Width = 220;
+            Height = 65;
             FlowDirection = isAr ? System.Windows.FlowDirection.RightToLeft : System.Windows.FlowDirection.LeftToRight;
 
             var card = new Border
@@ -48,7 +48,7 @@ namespace ShiaPrayerTimes
                 BorderBrush = UIThemeHelper.GetBrush(UIThemeHelper.AccentGold),
                 BorderThickness = new Thickness(1.5),
                 CornerRadius = new CornerRadius(10),
-                Padding = new Thickness(14, 8, 14, 8),
+                Padding = new Thickness(12, 8, 12, 8),
                 Effect = new DropShadowEffect
                 {
                     Color = Colors.Black,
@@ -61,6 +61,7 @@ namespace ShiaPrayerTimes
 
             var stack = new StackPanel();
 
+            // Line 1: Prayer / Event Title
             var headerStack = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal };
             _iconText = new TextBlock
             {
@@ -73,7 +74,7 @@ namespace ShiaPrayerTimes
             _titleText = new TextBlock
             {
                 Text = isAr ? "الصلاة القادمة" : "Next Prayer",
-                FontSize = 12,
+                FontSize = 12.5,
                 FontWeight = FontWeights.Bold,
                 Foreground = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkTextPrimary : UIThemeHelper.LightTextPrimary),
                 VerticalAlignment = VerticalAlignment.Center
@@ -81,24 +82,31 @@ namespace ShiaPrayerTimes
             headerStack.Children.Add(_titleText);
             stack.Children.Add(headerStack);
 
-            _countdownText = new TextBlock
-            {
-                Text = "00:00:00",
-                FontSize = 21,
-                FontWeight = FontWeights.Bold,
-                FontFamily = new System.Windows.Media.FontFamily("Consolas, Segoe UI"),
-                Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentGold),
-                Margin = new Thickness(0, 2, 0, 2)
-            };
-            stack.Children.Add(_countdownText);
+            // Line 2: Time and Live Countdown
+            var timeStack = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, Margin = new Thickness(0, 3, 0, 0) };
 
             _timeText = new TextBlock
             {
                 Text = "",
-                FontSize = 11,
-                Foreground = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkTextSecondary : UIThemeHelper.LightTextSecondary)
+                FontSize = 14,
+                FontWeight = FontWeights.Bold,
+                Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentGold),
+                VerticalAlignment = VerticalAlignment.Center
             };
-            stack.Children.Add(_timeText);
+            timeStack.Children.Add(_timeText);
+
+            _countdownText = new TextBlock
+            {
+                Text = "",
+                FontSize = 12,
+                FontWeight = FontWeights.SemiBold,
+                FontFamily = new System.Windows.Media.FontFamily("Consolas, Segoe UI"),
+                Foreground = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkTextSecondary : UIThemeHelper.LightTextSecondary),
+                Margin = new Thickness(6, 0, 6, 0),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            timeStack.Children.Add(_countdownText);
+            stack.Children.Add(timeStack);
 
             card.Child = stack;
             Content = card;
@@ -135,12 +143,21 @@ namespace ShiaPrayerTimes
             catch { }
         }
 
-        public void UpdateData(string icon, string title, string countdown, string timeDetail)
+        public void UpdateData(string icon, string title, string timeStr, string countdownStr)
         {
             _iconText.Text = icon;
             _titleText.Text = title;
-            _countdownText.Text = countdown;
-            _timeText.Text = timeDetail;
+            if (!string.IsNullOrEmpty(timeStr))
+            {
+                _timeText.Text = timeStr;
+                _timeText.Visibility = Visibility.Visible;
+                _countdownText.Text = string.Format("({0})", countdownStr);
+            }
+            else
+            {
+                _timeText.Visibility = Visibility.Collapsed;
+                _countdownText.Text = countdownStr;
+            }
         }
 
         public void ShowNearTray(System.Drawing.Point mousePos)
@@ -270,10 +287,7 @@ namespace ShiaPrayerTimes
                     ? (isArLang ? string.Format("الصلاة القادمة: {0}", pName) : string.Format("Next Prayer: {0}", pName))
                     : (isArLang ? string.Format("الموعد القادم: {0}", pName) : string.Format("Next Event: {0}", pName));
 
-                string countdownText = isArLang ? string.Format("المتبقي: {0}", _lastCountdownStr) : string.Format("Remaining: {0}", _lastCountdownStr);
-                string timeDetail = string.Format("⏰ {0}  |  📍 {1}", _lastNextTimeStr, _settings.Location != null ? _settings.Location.Name : "");
-
-                _hoverFlyout.UpdateData(isActual ? "🕌 " : "⏰ ", title, countdownText, timeDetail);
+                _hoverFlyout.UpdateData(isActual ? "🕌 " : "⏰ ", title, _lastNextTimeStr, _lastCountdownStr);
                 _hoverFlyout.ShowNearTray(cur);
             }
             catch { }
@@ -436,30 +450,31 @@ namespace ShiaPrayerTimes
                 bool isAr = _settings.Language == "ar";
                 string pName = isAr ? prayerNameAr : prayerNameEn;
                 bool isActualPrayer = PrayerCalculator.IsActualPrayer(prayerNameEn);
-                string text = isActualPrayer
-                    ? (isAr ? string.Format("الصلاة القادمة: {0} ({1})", pName, countdownStr) : string.Format("Next Prayer: {0} in {1}", pName, countdownStr))
-                    : (isAr ? string.Format("الموعد القادم: {0} ({1})", pName, countdownStr) : string.Format("Next Event: {0} in {1}", pName, countdownStr));
+
+                // Line 1: Next Prayer or Next Event
+                string line1 = isActualPrayer
+                    ? (isAr ? string.Format("الصلاة القادمة: {0}", pName) : string.Format("Next Prayer: {0}", pName))
+                    : (isAr ? string.Format("الموعد القادم: {0}", pName) : string.Format("Next Event: {0}", pName));
+
+                // Line 2: Time and countdown
+                string line2 = !string.IsNullOrEmpty(nextTimeFormatted)
+                    ? string.Format("{0} ({1})", nextTimeFormatted, countdownStr)
+                    : countdownStr;
 
                 if (_nextPrayerMenuItem != null)
                 {
-                    _nextPrayerMenuItem.Text = text;
+                    _nextPrayerMenuItem.Text = string.Format("{0}: {1}", line1, line2);
                 }
 
                 // Standard Windows Tooltip (WinForms limits NotifyIcon.Text to 63 chars)
-                string tip = text;
+                string tip = line1 + "\n" + line2;
                 if (tip.Length > 63) tip = tip.Substring(0, 63);
                 _notifyIcon.Text = tip;
 
                 // If live hover flyout is visible, update it dynamically so countdown ticks constantly!
                 if (_hoverFlyout != null && _hoverFlyout.IsVisible)
                 {
-                    string title = isActualPrayer
-                        ? (isAr ? string.Format("الصلاة القادمة: {0}", pName) : string.Format("Next Prayer: {0}", pName))
-                        : (isAr ? string.Format("الموعد القادم: {0}", pName) : string.Format("Next Event: {0}", pName));
-
-                    string countdownText = isAr ? string.Format("المتبقي: {0}", countdownStr) : string.Format("Remaining: {0}", countdownStr);
-                    string timeDetail = string.Format("⏰ {0}  |  📍 {1}", _lastNextTimeStr, _settings.Location != null ? _settings.Location.Name : "");
-                    _hoverFlyout.UpdateData(isActualPrayer ? "🕌 " : "⏰ ", title, countdownText, timeDetail);
+                    _hoverFlyout.UpdateData(isActualPrayer ? "🕌 " : "⏰ ", line1, nextTimeFormatted, countdownStr);
                 }
             }
             catch { }

@@ -995,6 +995,10 @@ namespace ShiaPrayerTimes
                 string formattedTime = _settings.TimeFormat24H ? nextPrayerTime.ToString("HH:mm:ss") : nextPrayerTime.ToString("hh:mm:ss tt");
                 _nextPrayerTimeText.Text = formattedTime;
 
+                string shortTime = _settings.TimeFormat24H
+                    ? nextPrayerTime.ToString("HH:mm")
+                    : (isAr ? nextPrayerTime.ToString("hh:mm tt", new System.Globalization.CultureInfo("ar-SA")) : nextPrayerTime.ToString("hh:mm tt"));
+
                 if (!string.IsNullOrEmpty(prevPrayerName))
                 {
                     string prevAr = namesAr.ContainsKey(prevPrayerName) ? namesAr[prevPrayerName] : prevPrayerName;
@@ -1015,7 +1019,7 @@ namespace ShiaPrayerTimes
                 }
 
                 // Tray tooltip & menu ALWAYS stay anchored to the true upcoming prayer & countdown!
-                _trayManager.UpdateTrayTooltipAndMenu(pNameAr, nextPrayerName, countdownStr, formattedTime);
+                _trayManager.UpdateTrayTooltipAndMenu(pNameAr, nextPrayerName, countdownStr, shortTime);
             }
 
             // Highlight items in prayer schedule list ONLY when viewing today
