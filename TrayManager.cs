@@ -114,20 +114,19 @@ namespace ShiaPrayerTimes
             Loaded += (s, e) => EnsureInsideScreen();
 
             _autoHideTimer = new DispatcherTimer(DispatcherPriority.Normal);
-            _autoHideTimer.Interval = TimeSpan.FromMilliseconds(80);
+            _autoHideTimer.Interval = TimeSpan.FromMilliseconds(150);
             _autoHideTimer.Tick += (s, e) =>
             {
                 var cur = System.Windows.Forms.Cursor.Position;
-                double dx = Math.Abs(cur.X - _lastHoverPos.X);
-                double dy = Math.Abs(cur.Y - _lastHoverPos.Y);
+                double dx = cur.X - _lastHoverPos.X;
+                double dy = cur.Y - _lastHoverPos.Y;
+                double dist = Math.Sqrt(dx * dx + dy * dy);
 
-                bool overFlyout = (cur.X >= Left - 4 && cur.X <= Left + ActualWidth + 4 &&
-                                   cur.Y >= Top - 4 && cur.Y <= Top + ActualHeight + 4);
+                bool overFlyout = (cur.X >= Left - 6 && cur.X <= Left + ActualWidth + 6 &&
+                                   cur.Y >= Top - 6 && cur.Y <= Top + ActualHeight + 6);
 
-                // Check if cursor is still within our icon slot (18px horizontal, 22px vertical)
-                bool inIconSlot = (dx <= 18 && dy <= 22);
-
-                if (!overFlyout && !inIconSlot)
+                // Hide if mouse moved to neighboring icon (dist > 40) and not over the flyout card
+                if (dist > 40 && !overFlyout)
                 {
                     HideFlyout();
                 }
@@ -171,8 +170,9 @@ namespace ShiaPrayerTimes
             _lastHoverPos = mousePos;
 
             _card.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
-            double w = Math.Max(MinWidth, _card.DesiredSize.Width);
-            double h = Math.Max(50, _card.DesiredSize.Height);
+            // Add margin for shadow/border so clamping safely includes the full card width inside the monitor
+            double w = Math.Max(MinWidth, _card.DesiredSize.Width) + 28;
+            double h = Math.Max(50, _card.DesiredSize.Height) + 20;
 
             var screen = System.Windows.Forms.Screen.FromPoint(mousePos);
             var wa = screen.WorkingArea;
@@ -293,20 +293,21 @@ namespace ShiaPrayerTimes
             bool isAr = _settings.Language == "ar";
             _hoverFlyout = new TrayHoverFlyout(isDark, isAr);
 
-            // Hover stabilization timer (300ms delay to settle mouse before showing)
+            // Hover stabilization timer (250ms delay to settle mouse before showing)
             _hoverTimer = new DispatcherTimer(DispatcherPriority.Normal);
-            _hoverTimer.Interval = TimeSpan.FromMilliseconds(300);
+            _hoverTimer.Interval = TimeSpan.FromMilliseconds(250);
             _hoverTimer.Tick += (s, e) =>
             {
                 _hoverTimer.Stop();
                 try
                 {
                     var cur = System.Windows.Forms.Cursor.Position;
-                    double dx = Math.Abs(cur.X - _pendingHoverPos.X);
-                    double dy = Math.Abs(cur.Y - _pendingHoverPos.Y);
+                    double dx = cur.X - _pendingHoverPos.X;
+                    double dy = cur.Y - _pendingHoverPos.Y;
+                    double dist = Math.Sqrt(dx * dx + dy * dy);
 
-                    // Check that the mouse has settled on our icon slot (18px horizontal, 22px vertical)
-                    if (dx <= 18 && dy <= 22)
+                    // Check that the mouse is hovering around the icon (generous 45px tolerance)
+                    if (dist < 45)
                     {
                         ShowHoverFlyoutAt(cur);
                     }
