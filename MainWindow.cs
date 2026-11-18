@@ -90,10 +90,11 @@ namespace ShiaPrayerTimes
             bool isDark = _settings.Theme == "Dark";
 
             Title = isAr ? "أوقات الصلاة الشيعية - الجعفرية (Pray Times)" : "Shia (Jafari) Prayer Times Desktop";
-            Width = 980;
-            Height = 760;
-            MinWidth = 850;
-            MinHeight = 650;
+            var wa = SystemParameters.WorkArea;
+            Width = Math.Min(980, Math.Max(720, wa.Width * 0.90));
+            Height = Math.Min(760, Math.Max(520, wa.Height * 0.92));
+            MinWidth = Math.Min(720, wa.Width * 0.80);
+            MinHeight = Math.Min(500, wa.Height * 0.80);
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
             FlowDirection = isAr ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
 

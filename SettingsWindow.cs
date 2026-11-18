@@ -78,10 +78,11 @@ namespace ShiaPrayerTimes
             bool isDark = _settings.Theme == "Dark";
 
             Title = isAr ? "إعدادات أوقات الصلاة" : "Prayer Times Settings";
-            Width = 1180;
-            Height = 740;
-            MinWidth = 1050;
-            MinHeight = 650;
+            var wa = SystemParameters.WorkArea;
+            Width = Math.Min(1100, Math.Max(780, wa.Width * 0.92));
+            Height = Math.Min(740, Math.Max(520, wa.Height * 0.92));
+            MinWidth = Math.Min(780, wa.Width * 0.80);
+            MinHeight = Math.Min(500, wa.Height * 0.80);
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
             FlowDirection = isAr ? System.Windows.FlowDirection.RightToLeft : System.Windows.FlowDirection.LeftToRight;
 
