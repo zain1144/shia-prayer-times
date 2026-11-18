@@ -125,19 +125,20 @@ namespace ShiaPrayerTimes
             Content = card;
 
             _autoHideTimer = new DispatcherTimer(DispatcherPriority.Normal);
-            _autoHideTimer.Interval = TimeSpan.FromMilliseconds(150);
+            _autoHideTimer.Interval = TimeSpan.FromMilliseconds(80);
             _autoHideTimer.Tick += (s, e) =>
             {
                 var cur = System.Windows.Forms.Cursor.Position;
-                double dx = cur.X - _lastHoverPos.X;
-                double dy = cur.Y - _lastHoverPos.Y;
-                double dist = Math.Sqrt(dx * dx + dy * dy);
+                double dx = Math.Abs(cur.X - _lastHoverPos.X);
+                double dy = Math.Abs(cur.Y - _lastHoverPos.Y);
 
-                bool overFlyout = (cur.X >= Left && cur.X <= Left + ActualWidth &&
-                                   cur.Y >= Top && cur.Y <= Top + ActualHeight);
+                bool overFlyout = (cur.X >= Left - 4 && cur.X <= Left + ActualWidth + 4 &&
+                                   cur.Y >= Top - 4 && cur.Y <= Top + ActualHeight + 4);
 
-                // Keep open if mouse is hovering over the flyout card OR remaining near the tray area (100px)
-                if (dist > 100 && !overFlyout)
+                // Check if cursor is still within our icon slot (18px horizontal, 22px vertical)
+                bool inIconSlot = (dx <= 18 && dy <= 22);
+
+                if (!overFlyout && !inIconSlot)
                 {
                     HideFlyout();
                 }
@@ -260,7 +261,7 @@ namespace ShiaPrayerTimes
 
             _notifyIcon = new NotifyIcon();
             _notifyIcon.Visible = true;
-            _notifyIcon.Text = _settings.Language == "ar" ? "أوقات الصلاة" : "Shia Prayer Times";
+            _notifyIcon.Text = ""; // Suppress native Windows Explorer tooltip so only our live ticking flyout shows without duplicates!
 
             LoadIcon();
 
@@ -278,12 +279,11 @@ namespace ShiaPrayerTimes
                 try
                 {
                     var cur = System.Windows.Forms.Cursor.Position;
-                    double dx = cur.X - _pendingHoverPos.X;
-                    double dy = cur.Y - _pendingHoverPos.Y;
-                    double dist = Math.Sqrt(dx * dx + dy * dy);
+                    double dx = Math.Abs(cur.X - _pendingHoverPos.X);
+                    double dy = Math.Abs(cur.Y - _pendingHoverPos.Y);
 
-                    // Check that the mouse has settled (stayed within 40px of where it stopped)
-                    if (dist < 40)
+                    // Check that the mouse has settled on our icon slot (18px horizontal, 22px vertical)
+                    if (dx <= 18 && dy <= 22)
                     {
                         ShowHoverFlyoutAt(cur);
                     }
@@ -528,11 +528,6 @@ namespace ShiaPrayerTimes
                 {
                     _nextPrayerMenuItem.Text = string.Format("{0}: {1}", line1, line2);
                 }
-
-                // Standard Windows Tooltip (WinForms limits NotifyIcon.Text to 63 chars)
-                string tip = line1 + "\n" + line2;
-                if (tip.Length > 63) tip = tip.Substring(0, 63);
-                _notifyIcon.Text = tip;
 
                 // If live hover flyout is visible, update it dynamically so countdown ticks constantly!
                 if (_hoverFlyout != null && _hoverFlyout.IsVisible)
