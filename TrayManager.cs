@@ -167,11 +167,21 @@ namespace ShiaPrayerTimes
 
                 // 3. Is cursor on the vertical bridge between our icon and the card?
                 // Allows vertical cursor transition, but ONLY within our icon's narrow column!
-                double bridgeTop = Math.Min(Top + ActualHeight - 4.0, iconTop);
-                double bridgeBottom = Math.Max(Top + ActualHeight + 4.0, iconTop + 4.0);
+                double bridgeTop, bridgeBottom;
+                if (Top < _iconRect.Top)
+                {
+                    bridgeTop = Top + ActualHeight - 4.0;
+                    bridgeBottom = iconTop + 4.0;
+                }
+                else
+                {
+                    bridgeTop = _iconRect.Bottom - 4.0;
+                    bridgeBottom = Top + 4.0;
+                }
 
                 bool onBridge = (dipCurX >= iconLeft && dipCurX <= iconRight &&
-                                 dipCurY >= bridgeTop && dipCurY <= bridgeBottom);
+                                 dipCurY >= Math.Min(bridgeTop, bridgeBottom) &&
+                                 dipCurY <= Math.Max(bridgeTop, bridgeBottom));
 
                 if (!overCard && !onOurIcon && !onBridge)
                 {
@@ -302,19 +312,38 @@ namespace ShiaPrayerTimes
             double boundsBottom = screen.Bounds.Bottom / scaleY;
 
             // Determine accurate icon slot bounds (matching the OS highlight box)
-            Rect osRect;
-            if (_trayManager != null && _trayManager.TryGetIconRect(out osRect))
+            Rect osRect = Rect.Empty;
+            bool gotOsRect = (_trayManager != null && _trayManager.TryGetIconRect(out osRect));
+            bool isOverflow = false;
+
+            if (gotOsRect)
             {
                 _iconRect = osRect;
                 _iconCenterX = osRect.Left + (osRect.Width / 2.0);
                 _slotHalfWidth = Math.Max(10.0, osRect.Width / 2.0);
+                // If icon bottom is at or above the taskbar top edge, it's inside the overflow flyout!
+                isOverflow = (_iconRect.Bottom <= waBottom);
             }
             else
             {
                 _iconCenterX = dipMouseX;
-                // Standard Windows 11 taskbar button is ~40-48 physical px wide -> in DIPs = 22 / scaleX
-                _slotHalfWidth = Math.Max(10.0, 22.0 / scaleX);
-                _iconRect = new Rect(_iconCenterX - _slotHalfWidth, waBottom, _slotHalfWidth * 2.0, Math.Max(36.0, boundsBottom - waBottom));
+                // If mouse Y is above taskbar top edge, cursor is in the overflow flyout!
+                isOverflow = (dipMouseY < waBottom - 4);
+
+                if (isOverflow)
+                {
+                    // Square icon slot in Windows 11 overflow menu (~40-48 physical px)
+                    double slotHalfW = Math.Max(12.0, 22.0 / scaleX);
+                    double slotHalfH = Math.Max(12.0, 22.0 / scaleY);
+                    _slotHalfWidth = slotHalfW;
+                    _iconRect = new Rect(dipMouseX - slotHalfW, dipMouseY - slotHalfH, slotHalfW * 2.0, slotHalfH * 2.0);
+                }
+                else
+                {
+                    // Standard taskbar button slot
+                    _slotHalfWidth = Math.Max(10.0, 22.0 / scaleX);
+                    _iconRect = new Rect(_iconCenterX - _slotHalfWidth, waBottom, _slotHalfWidth * 2.0, Math.Max(36.0, boundsBottom - waBottom));
+                }
             }
 
             _card.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
@@ -323,9 +352,19 @@ namespace ShiaPrayerTimes
 
             // Center horizontally over our icon
             double left = _iconCenterX - (w / 2.0);
-            double top = waBottom - h - 2;
+            double top;
 
-            if (waBottom < boundsBottom)
+            if (isOverflow)
+            {
+                // Position directly above the icon in the overflow flyout
+                top = _iconRect.Top - h - 6;
+                // If not enough room above, position below
+                if (top < waTop + 4)
+                {
+                    top = _iconRect.Bottom + 6;
+                }
+            }
+            else if (waBottom < boundsBottom)
             {
                 top = waBottom - h - 2;
                 left = _iconCenterX - (w / 2.0);
@@ -344,6 +383,10 @@ namespace ShiaPrayerTimes
             {
                 left = waLeft + 2;
                 top = dipMouseY - (h / 2.0);
+            }
+            else
+            {
+                top = waBottom - h - 2;
             }
 
             // Strictly clamp inside the working area of the monitor where the cursor is!
@@ -529,10 +572,10 @@ namespace ShiaPrayerTimes
                     double waBottom = screen.WorkingArea.Bottom / scaleY;
 
                     double dx = Math.Abs((cur.X - _pendingHoverPos.X) / scaleX);
-                    double curY = cur.Y / scaleY;
+                    double dy = Math.Abs((cur.Y - _pendingHoverPos.Y) / scaleY);
 
-                    // Ensure cursor is still in taskbar area near our pending hover position
-                    if (dx <= 16 && curY >= waBottom - 4)
+                    // Ensure cursor has settled on our icon slot (within 16 DIPs tolerance in any direction, taskbar or overflow flyout)
+                    if (dx <= 16 && dy <= 16)
                     {
                         ShowHoverFlyoutAt(cur);
                     }
