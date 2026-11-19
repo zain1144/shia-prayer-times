@@ -1147,13 +1147,18 @@ namespace ShiaPrayerTimes
             {
                 e.Cancel = true;
                 Hide();
-                if (_trayManager != null && _trayManager.NotifyIcon != null)
+                if (!_settings.HasShownTrayMinimizeHint)
                 {
-                    bool isAr = _settings.Language == "ar";
-                    _trayManager.NotifyIcon.ShowBalloonTip(3000,
-                        isAr ? "أوقات الصلاة تعمل في الخلفية" : "Shia Prayer Times",
-                        isAr ? "تم تصغير البرنامج إلى شريط المهام بجانب الساعة." : "Application minimized to system tray.",
-                        System.Windows.Forms.ToolTipIcon.Info);
+                    _settings.HasShownTrayMinimizeHint = true;
+                    _settings.Save();
+                    if (_trayManager != null && _trayManager.NotifyIcon != null)
+                    {
+                        bool isAr = _settings.Language == "ar";
+                        _trayManager.NotifyIcon.ShowBalloonTip(3000,
+                            isAr ? "أوقات الصلاة تعمل في الخلفية" : "Shia Prayer Times",
+                            isAr ? "تم تصغير البرنامج إلى شريط المهام بجانب الساعة." : "Application minimized to system tray.",
+                            System.Windows.Forms.ToolTipIcon.Info);
+                    }
                 }
             }
             else

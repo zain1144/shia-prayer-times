@@ -111,6 +111,7 @@ namespace ShiaPrayerTimes
         public int HijriOffset { get; set; }
         public bool AutoStartWithWindows { get; set; }
         public bool MinimizeToTrayOnClose { get; set; }
+        public bool HasShownTrayMinimizeHint { get; set; }
 
         public LocationPreset Location { get; set; }
         public List<LocationPreset> Presets { get; set; }
@@ -146,6 +147,7 @@ namespace ShiaPrayerTimes
             HijriOffset = 0;
             AutoStartWithWindows = false;
             MinimizeToTrayOnClose = true;
+            HasShownTrayMinimizeHint = false;
             NotificationDurationSeconds = 10;
             NotificationStyle = "CustomToast";
             ToastPosition = "BottomRight";

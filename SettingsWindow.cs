@@ -56,6 +56,7 @@ namespace ShiaPrayerTimes
         private StackPanel _adhanLibraryListPanel;
         private System.Windows.Controls.CheckBox _startupCheck;
         private System.Windows.Controls.CheckBox _closeToTrayCheck;
+        private System.Windows.Controls.CheckBox _showTrayNotifyCheck;
         private System.Windows.Controls.ComboBox _themeCombo;
         private System.Windows.Controls.ComboBox _langCombo;
         private System.Windows.Controls.ComboBox _notifStyleCombo;
@@ -1728,11 +1729,25 @@ namespace ShiaPrayerTimes
             {
                 Content = isAr ? "التصغير إلى شريط المهام (Tray) عند الضغط على زر الإغلاق بدلاً من إنهائه" : "Minimize to system tray when closing instead of exiting",
                 IsChecked = _settings.MinimizeToTrayOnClose,
-                Margin = new Thickness(0, 0, 0, 16),
+                Margin = new Thickness(0, 0, 0, 8),
                 FontWeight = FontWeights.SemiBold
             };
             UIThemeHelper.StyleCheckBox(_closeToTrayCheck, isDark);
             panel.Children.Add(_closeToTrayCheck);
+
+            _showTrayNotifyCheck = new System.Windows.Controls.CheckBox
+            {
+                Content = isAr ? "إظهار تنبيه في زاوية الشاشة عند التصغير إلى شريط المهام" : "Show notification when minimized to system tray",
+                IsChecked = !_settings.HasShownTrayMinimizeHint,
+                Margin = new Thickness(24, 0, 0, 16),
+                FontWeight = FontWeights.Normal,
+                IsEnabled = _settings.MinimizeToTrayOnClose
+            };
+            UIThemeHelper.StyleCheckBox(_showTrayNotifyCheck, isDark);
+            panel.Children.Add(_showTrayNotifyCheck);
+
+            _closeToTrayCheck.Checked += (s, e) => _showTrayNotifyCheck.IsEnabled = true;
+            _closeToTrayCheck.Unchecked += (s, e) => _showTrayNotifyCheck.IsEnabled = false;
 
             // Theme & Language
             var themeLangGrid = new Grid();
@@ -2056,6 +2071,7 @@ namespace ShiaPrayerTimes
 
             _settings.AutoStartWithWindows = _startupCheck.IsChecked == true;
             _settings.MinimizeToTrayOnClose = _closeToTrayCheck.IsChecked == true;
+            _settings.HasShownTrayMinimizeHint = _showTrayNotifyCheck.IsChecked != true;
 
             var selTh = _themeCombo.SelectedItem as ComboBoxItem;
             _settings.Theme = selTh != null ? (selTh.Tag as string) : "Dark";
