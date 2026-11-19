@@ -149,7 +149,8 @@ namespace ShiaPrayerTimes
             }
 
             Width = targetWidth;
-            _maxBarWidth = targetWidth - 24; // 12 margin on left, 12 on right
+            double barInset = 16.0;
+            _maxBarWidth = targetWidth - (barInset * 2.0);
 
             WindowStyle = WindowStyle.None;
             AllowsTransparency = true;
@@ -162,23 +163,15 @@ namespace ShiaPrayerTimes
             FlowDirection = isAr ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
             Opacity = 1;
 
-            // Outer Container with Drop Shadow and Drag Support
+            // Outer Container with clean rounded border matching Windows 11 Fluent design
             var outerBorder = new Border
             {
-                Margin = new Thickness(12),
+                Margin = new Thickness(0),
                 CornerRadius = new CornerRadius(12),
                 Background = UIThemeHelper.GetBrush(isDark ? Color.FromRgb(15, 23, 42) : Color.FromRgb(255, 255, 255)),
                 BorderBrush = UIThemeHelper.GetBrush(isCalibration ? Color.FromRgb(217, 119, 6) : Color.FromRgb(16, 185, 129)),
                 BorderThickness = new Thickness(isCalibration ? 2.0 : 1.5),
-                ClipToBounds = true,
-                Cursor = isCalibration ? Cursors.SizeAll : Cursors.Arrow,
-                Effect = new DropShadowEffect
-                {
-                    BlurRadius = 14,
-                    ShadowDepth = 3,
-                    Opacity = 0.45,
-                    Color = Colors.Black
-                }
+                Cursor = isCalibration ? Cursors.SizeAll : Cursors.Arrow
             };
 
             // Only allow dragging when in calibration mode from Settings!
@@ -362,22 +355,27 @@ namespace ShiaPrayerTimes
                 mainGrid.Children.Add(calibRow);
             }
 
-            // 4. Progress Bar
+            // 4. Progress Bar (clean inset capsule that does not touch or clip the rounded corners)
             if (durationSeconds > 0)
             {
-                var barTrack = new Grid
+                var barTrack = new Border
                 {
                     Height = 3.5,
-                    Background = UIThemeHelper.GetBrush(isDark ? Color.FromRgb(30, 41, 59) : Color.FromRgb(226, 232, 240))
+                    Margin = new Thickness(barInset, 0, barInset, 10),
+                    CornerRadius = new CornerRadius(2),
+                    Background = UIThemeHelper.GetBrush(isDark ? Color.FromRgb(30, 41, 59) : Color.FromRgb(226, 232, 240)),
+                    ClipToBounds = true
                 };
                 _progressBar = new Rectangle
                 {
                     Height = 3.5,
                     Width = _maxBarWidth,
+                    RadiusX = 2,
+                    RadiusY = 2,
                     HorizontalAlignment = HorizontalAlignment.Left,
                     Fill = UIThemeHelper.GetBrush(Color.FromRgb(16, 185, 129))
                 };
-                barTrack.Children.Add(_progressBar);
+                barTrack.Child = _progressBar;
                 Grid.SetRow(barTrack, 1);
                 mainGrid.Children.Add(barTrack);
             }
