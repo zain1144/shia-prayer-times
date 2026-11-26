@@ -1,6 +1,13 @@
 using System;
+using System.Reflection;
 using System.Threading;
 using System.Windows;
+
+[assembly: AssemblyTitle("Shia Prayer Times")]
+[assembly: AssemblyProduct("Shia (Jafari) Prayer Times Desktop")]
+[assembly: AssemblyVersion("1.1.0.0")]
+[assembly: AssemblyFileVersion("1.1.0.0")]
+[assembly: AssemblyInformationalVersion("1.1.0")]
 
 namespace ShiaPrayerTimes
 {

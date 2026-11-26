@@ -5,22 +5,20 @@ A lightweight, offline-capable, standalone Windows desktop application designed 
 
 ---
 
-## 🌟 What's New in Version 2.1
+## 🌟 Version 1.1.0 Highlights (Latest)
 
-1. **تقويم السيد هاشم التوبلاني (Sayyid Hashim al-Tubalani Calendar):**
-   - Added as a primary calculation standard: `Fajr: 18.0°, Maghrib: 4.0°, Isha: 14.0°, Midnight: Jafari`.
-2. **Auto-Detect My Location (تحديد الموقع تلقائياً):**
-   - One-click automatic geolocation detection button (`📍`) in both the main window and settings to fetch coordinates, timezone, and city name instantly.
-3. **Adhan Sounds Library & Per-Prayer Sound Assignment:**
-   - Ability to add, name, and save multiple Adhan audio files in a persistent library.
-   - Assign a distinct Adhan sound from your library to any prayer (e.g. distinct Fajr Adhan, Karbala Adhan for Maghrib, Najaf Adhan for Dhuhr).
-4. **Enhanced High-Contrast Dark Theme UI:**
-   - Completely resolved font contrast: ComboBoxes now feature a solid dark slate background (`#1E293B`) with pure white text (`#FFFFFF`) and golden indicators.
-   - Integrated title bar with seamless window dragging, minimize, maximize/restore, and close buttons.
-5. **Brand-New Multi-Resolution Icon:**
-   - Ultra-sharp 256x256, 128x128, 64x64, 48x48, 32x32, 16x16 icon featuring a royal emerald/navy shield, 24K gold border, glowing crescent, and an 8-pointed star (*Rub El Hizb*).
-6. **Git Version Control:**
-   - Full Git repository initialized with clean history and `.gitignore`.
+See the full version history in [CHANGELOG.md](CHANGELOG.md) and [GitHub Releases](https://github.com/zain1144/shia-prayer-times/releases).
+
+1. **Wake PC from Windows Sleep Mode (إيقاظ الجهاز تلقائياً من السكون):**
+   - Schedules Win32 wakeable timers (`SetWaitableTimer`) for upcoming enabled Adhan/reminder alerts so Windows wakes automatically from Sleep to play the Adhan, and keeps the PC awake until long Adhan playback finishes.
+2. **System Tray & Notification Refinements:**
+   - Works smoothly even inside the Windows hidden tray overflow menu (`^`), suppresses Windows 11 native empty tooltip artifacts, rounds toast progress bars cleanly, and shows the minimize-to-tray hint once on first close.
+3. **Previous Core Features (v1.0.0+):**
+   - **تقويم السيد هاشم التوبلاني (Sayyid Hashim al-Tubalani Calendar):** `Fajr: 18.0°, Maghrib: 4.0°, Isha: 14.0°, Midnight: Jafari`.
+   - **Smart City Search & Google Maps Coordinate Paste:** Instant accurate coordinates without requiring Windows Location Services.
+   - **Adhan Sounds Library & Per-Prayer Sound Assignment:** Embedded standalone audio with custom per-prayer assignment.
+   - **Multi-Resolution & High-DPI Support:** Adapts automatically across 720p, 1080p, 2K, and 4K screens.
+   - **Bilingual Dark/Light Theme UI:** Full Arabic (RTL) and English (LTR) support with integrated title bar.
 
 ---
 

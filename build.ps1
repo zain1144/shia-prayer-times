@@ -68,6 +68,7 @@ $sources = @(
     "LocationDetector.cs",
     "HijriCalendar.cs",
     "AppSettings.cs",
+    "SleepWakeManager.cs",
     "ToastNotificationWindow.cs",
     "AudioNotifier.cs",
     "TrayManager.cs",

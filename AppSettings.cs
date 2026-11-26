@@ -112,6 +112,7 @@ namespace ShiaPrayerTimes
         public bool AutoStartWithWindows { get; set; }
         public bool MinimizeToTrayOnClose { get; set; }
         public bool HasShownTrayMinimizeHint { get; set; }
+        public bool WakeFromSleepForAlerts { get; set; }
 
         public LocationPreset Location { get; set; }
         public List<LocationPreset> Presets { get; set; }
@@ -148,6 +149,7 @@ namespace ShiaPrayerTimes
             AutoStartWithWindows = false;
             MinimizeToTrayOnClose = true;
             HasShownTrayMinimizeHint = false;
+            WakeFromSleepForAlerts = true;
             NotificationDurationSeconds = 10;
             NotificationStyle = "CustomToast";
             ToastPosition = "BottomRight";

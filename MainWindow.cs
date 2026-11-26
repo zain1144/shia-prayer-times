@@ -14,6 +14,7 @@ namespace ShiaPrayerTimes
         private AppSettings _settings;
         private AudioNotifier _audioNotifier;
         private TrayManager _trayManager;
+        private SleepWakeManager _sleepWakeManager;
         private DispatcherTimer _clockTimer;
 
         private DateTime _viewDate = DateTime.Today;
@@ -59,11 +60,24 @@ namespace ShiaPrayerTimes
             _audioNotifier = new AudioNotifier(_settings, null);
             _trayManager = new TrayManager(this, _settings, _audioNotifier);
             _audioNotifier.NotifyIcon = _trayManager.NotifyIcon;
+            _sleepWakeManager = new SleepWakeManager(Dispatcher, OnSystemWakeOrResume);
+
+            if (Application.Current != null)
+            {
+                Application.Current.Exit += (s, e) =>
+                {
+                    if (_sleepWakeManager != null) _sleepWakeManager.Dispose();
+                };
+            }
 
             _audioNotifier.PlaybackStateChanged += (isPlaying, trackName) =>
             {
                 Dispatcher.Invoke((Action)(() =>
                 {
+                    if (_sleepWakeManager != null)
+                    {
+                        _sleepWakeManager.SetPlaybackActive(isPlaying);
+                    }
                     if (_audioPlayingBanner != null)
                     {
                         _audioPlayingBanner.Visibility = isPlaying ? Visibility.Visible : Visibility.Collapsed;
@@ -738,6 +752,9 @@ namespace ShiaPrayerTimes
 
             // Update Countdown and highlights (always based on today!)
             UpdateCountdownAndHighlights();
+
+            // Arm or update Windows sleep wake timer for next enabled prayer/reminder
+            RefreshWakeSchedule();
         }
 
         private void EnsureTodayTimesCalculated()
@@ -908,6 +925,7 @@ namespace ShiaPrayerTimes
             {
                 _todayTimesResult = null;
                 EnsureTodayTimesCalculated();
+                RefreshWakeSchedule();
             }
             UpdateCountdownAndHighlights();
             CheckAndTriggerAlarms();
@@ -1071,6 +1089,7 @@ namespace ShiaPrayerTimes
             };
 
             var timesDict = _todayTimesResult.ToDictionary();
+            bool anyFired = false;
 
             foreach (var ev in events)
             {
@@ -1088,6 +1107,7 @@ namespace ShiaPrayerTimes
                     if (!_firedAlerts.Contains(alertKey))
                     {
                         _firedAlerts.Add(alertKey);
+                        anyFired = true;
                         string tStr = _settings.TimeFormat24H ? pTime.ToString("HH:mm") : pTime.ToString("hh:mm tt");
                         _audioNotifier.TriggerPrayerNotification(namesAr[ev], ev, tStr, cfg.NotificationMode, cfg.SoundId, cfg.CustomAudioPath);
                     }
@@ -1104,11 +1124,96 @@ namespace ShiaPrayerTimes
                         if (!_firedAlerts.Contains(remKey))
                         {
                             _firedAlerts.Add(remKey);
+                            anyFired = true;
                             _audioNotifier.TriggerReminderNotification(namesAr[ev], ev, cfg.ReminderMinutes, cfg.ReminderSoundId, cfg.CustomReminderAudioPath);
                         }
                     }
                 }
             }
+
+            if (anyFired)
+            {
+                RefreshWakeSchedule();
+            }
+        }
+
+        private void OnSystemWakeOrResume()
+        {
+            if (DateTime.Today != _todayDate)
+            {
+                _todayTimesResult = null;
+                EnsureTodayTimesCalculated();
+            }
+            UpdateCountdownAndHighlights();
+            CheckAndTriggerAlarms();
+            RefreshWakeSchedule();
+        }
+
+        private void RefreshWakeSchedule()
+        {
+            if (_sleepWakeManager == null) return;
+            DateTime nextWake = GetNextAlertTimeLocal();
+            _sleepWakeManager.ScheduleWake(nextWake);
+        }
+
+        private DateTime GetNextAlertTimeLocal()
+        {
+            if (!_settings.WakeFromSleepForAlerts) return DateTime.MaxValue;
+
+            EnsureTodayTimesCalculated();
+            DateTime now = DateTime.Now;
+            DateTime earliest = DateTime.MaxValue;
+            string[] events = new string[] { "Imsak", "Fajr", "Sunrise", "Dhuhr", "Asr", "Sunset", "Maghrib", "Isha", "Midnight" };
+
+            for (int dayOffset = 0; dayOffset <= 1; dayOffset++)
+            {
+                DateTime targetDate = DateTime.Today.AddDays(dayOffset);
+                PrayerTimesResult res = (dayOffset == 0)
+                    ? _todayTimesResult
+                    : PrayerCalculator.Calculate(
+                        targetDate,
+                        _settings.Location.Latitude,
+                        _settings.Location.Longitude,
+                        _settings.Location.Timezone,
+                        _settings.Location.Elevation,
+                        _settings.ToCalculationParameters(),
+                        _settings.GetOffsets());
+
+                if (res == null) continue;
+                var timesDict = res.ToDictionary();
+                string dateKey = targetDate.ToString("yyyyMMdd");
+
+                foreach (var ev in events)
+                {
+                    PrayerEventConfig cfg;
+                    if (!_settings.Prayers.TryGetValue(ev, out cfg)) continue;
+
+                    DateTime pTime = timesDict[ev];
+
+                    if (!string.Equals(cfg.NotificationMode, "Off", StringComparison.OrdinalIgnoreCase))
+                    {
+                        string alertKey = "PRAYER_" + ev + "_" + dateKey;
+                        if (!_firedAlerts.Contains(alertKey) && pTime > now && pTime < earliest)
+                        {
+                            earliest = pTime;
+                        }
+                    }
+
+                    if (cfg.ReminderMinutes > 0)
+                    {
+                        DateTime remTime = pTime.AddMinutes(-cfg.ReminderMinutes);
+                        string remKey = "REM_" + ev + "_" + dateKey;
+                        if (!_firedAlerts.Contains(remKey) && remTime > now && remTime < earliest)
+                        {
+                            earliest = remTime;
+                        }
+                    }
+                }
+
+                if (earliest != DateTime.MaxValue) break;
+            }
+
+            return earliest;
         }
 
         public void OpenSettingsDialog()
@@ -1165,6 +1270,7 @@ namespace ShiaPrayerTimes
             {
                 _clockTimer.Stop();
                 _audioNotifier.Stop();
+                if (_sleepWakeManager != null) _sleepWakeManager.Dispose();
                 _trayManager.Dispose();
                 base.OnClosing(e);
             }

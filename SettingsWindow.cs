@@ -57,6 +57,7 @@ namespace ShiaPrayerTimes
         private System.Windows.Controls.CheckBox _startupCheck;
         private System.Windows.Controls.CheckBox _closeToTrayCheck;
         private System.Windows.Controls.CheckBox _showTrayNotifyCheck;
+        private System.Windows.Controls.CheckBox _wakeFromSleepCheck;
         private System.Windows.Controls.ComboBox _themeCombo;
         private System.Windows.Controls.ComboBox _langCombo;
         private System.Windows.Controls.ComboBox _notifStyleCombo;
@@ -160,12 +161,27 @@ namespace ShiaPrayerTimes
             Grid.SetRow(tabControl, 1);
             mainGrid.Children.Add(tabControl);
 
-            // Bottom Buttons (Save & Cancel)
+            // Bottom Bar (Version label + Save/Cancel)
+            var bottomBar = new Grid { Margin = new Thickness(16, 8, 16, 14) };
+            bottomBar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            bottomBar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var asmVer = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+            var verStr = asmVer != null ? string.Format("v{0}.{1}.{2}", asmVer.Major, asmVer.Minor, asmVer.Build) : "v1.1.0";
+            var verText = new TextBlock
+            {
+                Text = "Shia Prayer Times " + verStr,
+                FontSize = 11.5,
+                VerticalAlignment = VerticalAlignment.Center,
+                Foreground = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkTextSecondary : UIThemeHelper.LightTextSecondary)
+            };
+            Grid.SetColumn(verText, 0);
+            bottomBar.Children.Add(verText);
+
             var buttonPanel = new StackPanel
             {
                 Orientation = System.Windows.Controls.Orientation.Horizontal,
-                HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
-                Margin = new Thickness(16, 8, 16, 14)
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Right
             };
 
             var saveBtn = new System.Windows.Controls.Button
@@ -199,9 +215,11 @@ namespace ShiaPrayerTimes
 
             buttonPanel.Children.Add(cancelBtn);
             buttonPanel.Children.Add(saveBtn);
+            Grid.SetColumn(buttonPanel, 1);
+            bottomBar.Children.Add(buttonPanel);
 
-            Grid.SetRow(buttonPanel, 2);
-            mainGrid.Children.Add(buttonPanel);
+            Grid.SetRow(bottomBar, 2);
+            mainGrid.Children.Add(bottomBar);
 
             mainBorder.Child = mainGrid;
             Content = mainBorder;
@@ -1749,6 +1767,29 @@ namespace ShiaPrayerTimes
             _closeToTrayCheck.Checked += (s, e) => _showTrayNotifyCheck.IsEnabled = true;
             _closeToTrayCheck.Unchecked += (s, e) => _showTrayNotifyCheck.IsEnabled = false;
 
+            _wakeFromSleepCheck = new System.Windows.Controls.CheckBox
+            {
+                Content = isAr
+                    ? "إيقاظ الجهاز تلقائياً من وضع السكون (Sleep) عند حلول وقت الأذان أو التذكير"
+                    : "Wake computer from Sleep mode automatically for prayer & reminder alerts",
+                IsChecked = _settings.WakeFromSleepForAlerts,
+                Margin = new Thickness(0, 0, 0, 4),
+                FontWeight = FontWeights.SemiBold
+            };
+            UIThemeHelper.StyleCheckBox(_wakeFromSleepCheck, isDark);
+            panel.Children.Add(_wakeFromSleepCheck);
+
+            panel.Children.Add(new TextBlock
+            {
+                Text = isAr
+                    ? "ملاحظة: يتطلب تفعيل \"السماح بمؤقتات التنبيه (Allow wake timers)\" في إعدادات الطاقة بويندوز."
+                    : "Note: Requires \"Allow wake timers\" enabled in Windows Power Options.",
+                FontSize = 11.5,
+                Foreground = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkTextSecondary : UIThemeHelper.LightTextSecondary),
+                Margin = new Thickness(24, 0, 0, 16),
+                TextWrapping = TextWrapping.Wrap
+            });
+
             // Theme & Language
             var themeLangGrid = new Grid();
             themeLangGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(200) });
@@ -2072,6 +2113,10 @@ namespace ShiaPrayerTimes
             _settings.AutoStartWithWindows = _startupCheck.IsChecked == true;
             _settings.MinimizeToTrayOnClose = _closeToTrayCheck.IsChecked == true;
             _settings.HasShownTrayMinimizeHint = _showTrayNotifyCheck.IsChecked != true;
+            if (_wakeFromSleepCheck != null)
+            {
+                _settings.WakeFromSleepForAlerts = _wakeFromSleepCheck.IsChecked == true;
+            }
 
             var selTh = _themeCombo.SelectedItem as ComboBoxItem;
             _settings.Theme = selTh != null ? (selTh.Tag as string) : "Dark";
