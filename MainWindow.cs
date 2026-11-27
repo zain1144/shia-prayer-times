@@ -1101,7 +1101,7 @@ namespace ShiaPrayerTimes
 
                 // 1. Check exact prayer time (Must never fire before prayer time arrives)
                 double secPast = (now - pTime).TotalSeconds;
-                if (secPast >= 0 && secPast <= 45)
+                if (secPast >= 0 && secPast <= 60)
                 {
                     string alertKey = "PRAYER_" + ev + "_" + todayStr;
                     if (!_firedAlerts.Contains(alertKey))
@@ -1118,7 +1118,7 @@ namespace ShiaPrayerTimes
                 {
                     DateTime reminderTime = pTime.AddMinutes(-cfg.ReminderMinutes);
                     double remSecPast = (now - reminderTime).TotalSeconds;
-                    if (remSecPast >= 0 && remSecPast <= 45)
+                    if (remSecPast >= 0 && remSecPast <= 60)
                     {
                         string remKey = "REM_" + ev + "_" + todayStr;
                         if (!_firedAlerts.Contains(remKey))

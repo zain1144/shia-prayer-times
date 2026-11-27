@@ -1,15 +1,25 @@
 using System;
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Windows.Forms;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace ShiaPrayerTimes
 {
     public class AudioNotifier
     {
+        private const string MciAlias = "ShiaPrayerAudio";
+
+        [DllImport("winmm.dll", CharSet = CharSet.Unicode)]
+        private static extern int mciSendString(string command, StringBuilder returnValue, int returnLength, IntPtr winHandle);
+
         private MediaPlayer _player;
         private NotifyIcon _notifyIcon;
         private AppSettings _settings;
+        private DispatcherTimer _mciPollTimer;
+        private bool _usingMci = false;
         private bool _isPlaying = false;
         private string _currentTrackName = "";
 
@@ -31,7 +41,46 @@ namespace ShiaPrayerTimes
             _player = new MediaPlayer();
             _player.MediaEnded += Player_MediaEnded;
             _player.MediaFailed += Player_MediaFailed;
+
+            _mciPollTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
+            _mciPollTimer.Tick += MciPollTimer_Tick;
+
             UpdateVolume();
+        }
+
+        private void MciPollTimer_Tick(object sender, EventArgs e)
+        {
+            if (!_usingMci || !_isPlaying)
+            {
+                _mciPollTimer.Stop();
+                return;
+            }
+
+            var mode = new StringBuilder(128);
+            int res = mciSendString("status " + MciAlias + " mode", mode, mode.Capacity, IntPtr.Zero);
+            string status = mode.ToString().Trim();
+            if (res != 0 || (!status.Equals("playing", StringComparison.OrdinalIgnoreCase) && !status.Equals("seeking", StringComparison.OrdinalIgnoreCase)))
+            {
+                _mciPollTimer.Stop();
+                CloseMci();
+                _isPlaying = false;
+                _currentTrackName = "";
+                if (PlaybackStateChanged != null)
+                {
+                    PlaybackStateChanged(false, "");
+                }
+            }
+        }
+
+        private void CloseMci()
+        {
+            try
+            {
+                mciSendString("stop " + MciAlias, null, 0, IntPtr.Zero);
+                mciSendString("close " + MciAlias, null, 0, IntPtr.Zero);
+            }
+            catch { }
+            _usingMci = false;
         }
 
         public void UpdateSettings(AppSettings settings)
@@ -42,6 +91,11 @@ namespace ShiaPrayerTimes
 
         public void UpdateVolume()
         {
+            if (_usingMci && _isPlaying)
+            {
+                int mciVol = _settings.IsMuted ? 0 : Math.Max(0, Math.Min(1000, _settings.Volume * 10));
+                try { mciSendString("setaudio " + MciAlias + " volume to " + mciVol, null, 0, IntPtr.Zero); } catch { }
+            }
             if (_player != null)
             {
                 _player.Volume = _settings.IsMuted ? 0.0 : (_settings.Volume / 100.0);
@@ -139,13 +193,52 @@ namespace ShiaPrayerTimes
             {
                 if (!File.Exists(filePath)) return;
 
-                _player.Stop();
-                _player.Close();
+                _mciPollTimer.Stop();
+                CloseMci();
+                if (_player != null)
+                {
+                    try { _player.Stop(); _player.Close(); } catch { }
+                }
+
+                string resolvedName = string.IsNullOrEmpty(trackName) ? Path.GetFileName(filePath) : trackName;
+
+                // Primary engine: winmm.dll MCI plays directly through Windows Multimedia mixer
+                // without waiting for WPF/DWM desktop composition (works with screen off / locked / unattended wake).
+                int openRes = mciSendString("open \"" + filePath + "\" type mpegvideo alias " + MciAlias, null, 0, IntPtr.Zero);
+                if (openRes != 0)
+                {
+                    openRes = mciSendString("open \"" + filePath + "\" alias " + MciAlias, null, 0, IntPtr.Zero);
+                }
+
+                if (openRes == 0)
+                {
+                    int mciVol = _settings.IsMuted ? 0 : Math.Max(0, Math.Min(1000, _settings.Volume * 10));
+                    mciSendString("setaudio " + MciAlias + " volume to " + mciVol, null, 0, IntPtr.Zero);
+
+                    int playRes = mciSendString("play " + MciAlias, null, 0, IntPtr.Zero);
+                    if (playRes == 0)
+                    {
+                        _usingMci = true;
+                        _isPlaying = true;
+                        _currentTrackName = resolvedName;
+                        _mciPollTimer.Start();
+
+                        if (PlaybackStateChanged != null)
+                        {
+                            PlaybackStateChanged(true, _currentTrackName);
+                        }
+                        return;
+                    }
+                    CloseMci();
+                }
+
+                // Fallback engine: WPF MediaPlayer for codecs outside MCI
+                _usingMci = false;
                 _player.Open(new Uri(filePath, UriKind.Absolute));
                 UpdateVolume();
                 _player.Play();
                 _isPlaying = true;
-                _currentTrackName = string.IsNullOrEmpty(trackName) ? Path.GetFileName(filePath) : trackName;
+                _currentTrackName = resolvedName;
 
                 if (PlaybackStateChanged != null)
                 {
@@ -162,11 +255,14 @@ namespace ShiaPrayerTimes
 
         public void Stop()
         {
+            _mciPollTimer.Stop();
+            CloseMci();
             try
             {
                 if (_player != null)
                 {
                     _player.Stop();
+                    _player.Close();
                 }
             }
             catch { }

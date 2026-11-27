@@ -4,6 +4,16 @@ All notable changes to **Shia Prayer Times (أوقات الصلاة الشيعي
 
 ---
 
+## [v1.1.1] - 2026-11-27
+
+### 🐛 Fixed | الإصلاحات
+- **Adhan Playback Stalling While Locked / Screen Off / Unattended Wake (`AudioNotifier.cs`, `SleepWakeManager.cs`):**
+  - Replaced WPF `MediaPlayer` with native Windows Multimedia (`winmm.dll` `mciSendStringW`) as the primary playback engine (keeping `MediaPlayer` as fallback). This eliminates the DWM/rendering stall where Adhan audio queued silently during screen-off or Lock Screen wake and only started playing after unlocking Windows.
+  - Added `ES_DISPLAY_REQUIRED` alongside `ES_SYSTEM_REQUIRED` during wake hold and active audio playback so the monitor and HDMI/DisplayPort audio endpoints (such as NVIDIA High Definition Audio) power up cleanly on wake and turn off normally once playback finishes.
+  - Prevented duplicate waitable timer re-arming during the 3-second pre-wake lead-in window (`_lastArmedAlertLocal`), and widened post-wake trigger window to 60 seconds (`MainWindow.cs`).
+
+---
+
 ## [v1.1.0] - 2026-11-26
 
 ### ✨ Added | الإضافات الجديدة

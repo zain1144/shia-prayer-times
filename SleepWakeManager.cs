@@ -63,6 +63,7 @@ namespace ShiaPrayerTimes
         private bool _wakeHoldActive = false;
         private bool _playbackActive = false;
         private DateTime _scheduledWakeLocal = DateTime.MinValue;
+        private DateTime _lastArmedAlertLocal = DateTime.MinValue;
 
         public DateTime ScheduledWakeLocal { get { return _scheduledWakeLocal; } }
 
@@ -106,8 +107,8 @@ namespace ShiaPrayerTimes
 
                     if (idx == 1)
                     {
-                        // Nudge Windows idle timer immediately on wake before UI dispatcher runs
-                        SetThreadExecutionState(EXECUTION_STATE.ES_SYSTEM_REQUIRED);
+                        // Nudge system & display idle timers immediately so monitor/HDMI audio wake up before UI runs
+                        SetThreadExecutionState(EXECUTION_STATE.ES_SYSTEM_REQUIRED | EXECUTION_STATE.ES_DISPLAY_REQUIRED);
 
                         if (_dispatcher != null && !_disposed)
                         {
@@ -143,18 +144,19 @@ namespace ShiaPrayerTimes
                     return;
                 }
 
+                // Skip redundant re-arm if already scheduled for this exact prayer/reminder time
+                if (_lastArmedAlertLocal != DateTime.MinValue &&
+                    Math.Abs((_lastArmedAlertLocal - targetAlertLocal).TotalSeconds) < 1.0)
+                {
+                    return;
+                }
+
                 // Wake 3 seconds before prayer/reminder time so hardware & audio drivers initialize
                 DateTime wakeLocal = targetAlertLocal.AddSeconds(-3);
                 DateTime now = DateTime.Now;
                 if (wakeLocal <= now)
                 {
                     wakeLocal = now.AddSeconds(1);
-                }
-
-                if (_scheduledWakeLocal != DateTime.MinValue &&
-                    Math.Abs((_scheduledWakeLocal - wakeLocal).TotalSeconds) < 1.0)
-                {
-                    return;
                 }
 
                 long dueTimeFileTime = wakeLocal.ToUniversalTime().ToFileTimeUtc();
@@ -164,6 +166,7 @@ namespace ShiaPrayerTimes
                     SetWaitableTimer(_timerRawHandle, ref dueTimeFileTime, 0, IntPtr.Zero, IntPtr.Zero, false);
                 }
                 _scheduledWakeLocal = wakeLocal;
+                _lastArmedAlertLocal = targetAlertLocal;
             }
         }
 
@@ -182,6 +185,7 @@ namespace ShiaPrayerTimes
                 try { CancelWaitableTimer(_timerRawHandle); } catch { }
             }
             _scheduledWakeLocal = DateTime.MinValue;
+            _lastArmedAlertLocal = DateTime.MinValue;
         }
 
         /// <summary>
@@ -211,7 +215,9 @@ namespace ShiaPrayerTimes
             {
                 if (_wakeHoldActive || _playbackActive)
                 {
-                    SetThreadExecutionState(EXECUTION_STATE.ES_CONTINUOUS | EXECUTION_STATE.ES_SYSTEM_REQUIRED);
+                    // Keep both system & display active during wake/Adhan playback so HDMI/DisplayPort audio
+                    // endpoints stay powered on and Windows doesn't drop back into unattended sleep.
+                    SetThreadExecutionState(EXECUTION_STATE.ES_CONTINUOUS | EXECUTION_STATE.ES_SYSTEM_REQUIRED | EXECUTION_STATE.ES_DISPLAY_REQUIRED);
                 }
                 else
                 {

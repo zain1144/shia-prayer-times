@@ -5,12 +5,13 @@ A lightweight, offline-capable, standalone Windows desktop application designed 
 
 ---
 
-## 🌟 Version 1.1.0 Highlights (Latest)
+## 🌟 Version 1.1.1 Highlights (Latest)
 
 See the full version history in [CHANGELOG.md](CHANGELOG.md) and [GitHub Releases](https://github.com/zain1144/shia-prayer-times/releases).
 
-1. **Wake PC from Windows Sleep Mode (إيقاظ الجهاز تلقائياً من السكون):**
-   - Schedules Win32 wakeable timers (`SetWaitableTimer`) for upcoming enabled Adhan/reminder alerts so Windows wakes automatically from Sleep to play the Adhan, and keeps the PC awake until long Adhan playback finishes.
+1. **Wake PC from Windows Sleep & Lock Screen Audio Fix (إيقاظ الجهاز وتشغيل الأذان مباشرة):**
+   - Uses native Windows Multimedia (`winmm.dll`) playback so Adhan plays immediately even when the screen is off or Windows is locked (fixing WPF `MediaPlayer` stalling until desktop unlock).
+   - Schedules Win32 wakeable timers (`SetWaitableTimer`) for upcoming enabled Adhan/reminder alerts, wakes the display & HDMI/DisplayPort audio endpoints cleanly (`ES_DISPLAY_REQUIRED`), and keeps the PC awake until long Adhan playback finishes.
 2. **System Tray & Notification Refinements:**
    - Works smoothly even inside the Windows hidden tray overflow menu (`^`), suppresses Windows 11 native empty tooltip artifacts, rounds toast progress bars cleanly, and shows the minimize-to-tray hint once on first close.
 3. **Previous Core Features (v1.0.0+):**
