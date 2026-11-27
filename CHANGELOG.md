@@ -4,6 +4,19 @@ All notable changes to **Shia Prayer Times (أوقات الصلاة الشيعي
 
 ---
 
+## [v1.2.0] - 2026-11-27
+
+### ✨ Added | الإضافات الجديدة
+- **Built-In In-App Updater (`AppUpdater.cs`):**
+  - Checks GitHub Releases (`releases/latest`) over TLS 1.2 against the running app version (`AssemblyVersion`), silently once per day on startup (4 seconds after launch, toggleable in Settings) and manually anytime via **"Check for Updates / التحقق من التحديثات"** in Settings and the System Tray menu.
+  - Displays a clean release notes dialog showing the new version, GitHub changelog, and live download progress bar while downloading `ShiaPrayerTimes.exe` into `%TEMP%` with size verification.
+  - **Automatic Protected-Folder & `C:\` UAC Elevation:** Automatically detects whether the `.exe` folder is writable; performs silent self-replacement in normal user folders, or seamlessly requests Windows UAC admin elevation (`runas`) when placed in `C:\` or `C:\Program Files\`, then relaunches unelevated (`explorer.exe`) while preserving all user data in `%APPDATA%\ShiaPrayerTimes`.
+- **Update Settings Control (`AppSettings.cs`, `SettingsWindow.cs`, `TrayManager.cs`):**
+  - Added `AutoCheckUpdates` (enabled by default) and `LastUpdateCheckUtc` persistence fields.
+  - Added a **"🔄 Check for Updates"** button in the Settings bottom bar and **"التحقق من التحديثات..."** item in the tray context menu.
+
+---
+
 ## [v1.1.1] - 2026-11-27
 
 ### 🐛 Fixed | الإصلاحات

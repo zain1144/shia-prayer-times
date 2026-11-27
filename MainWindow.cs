@@ -96,6 +96,15 @@ namespace ShiaPrayerTimes
             _clockTimer.Interval = TimeSpan.FromSeconds(1);
             _clockTimer.Tick += ClockTimer_Tick;
             _clockTimer.Start();
+
+            // Delayed once-daily silent update check so app startup remains instant
+            var startupUpdateTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
+            startupUpdateTimer.Tick += (s, e) =>
+            {
+                startupUpdateTimer.Stop();
+                AppUpdater.CheckForUpdatesAsync(_settings, false, this);
+            };
+            startupUpdateTimer.Start();
         }
 
         private void SetupWindowUI()

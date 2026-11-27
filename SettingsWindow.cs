@@ -58,6 +58,7 @@ namespace ShiaPrayerTimes
         private System.Windows.Controls.CheckBox _closeToTrayCheck;
         private System.Windows.Controls.CheckBox _showTrayNotifyCheck;
         private System.Windows.Controls.CheckBox _wakeFromSleepCheck;
+        private System.Windows.Controls.CheckBox _autoUpdateCheck;
         private System.Windows.Controls.ComboBox _themeCombo;
         private System.Windows.Controls.ComboBox _langCombo;
         private System.Windows.Controls.ComboBox _notifStyleCombo;
@@ -167,16 +168,36 @@ namespace ShiaPrayerTimes
             bottomBar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
             var asmVer = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-            var verStr = asmVer != null ? string.Format("v{0}.{1}.{2}", asmVer.Major, asmVer.Minor, asmVer.Build) : "v1.1.0";
-            var verText = new TextBlock
+            var verStr = asmVer != null ? string.Format("v{0}.{1}.{2}", asmVer.Major, asmVer.Minor, asmVer.Build) : "v1.2.0";
+            var verStack = new StackPanel
+            {
+                Orientation = System.Windows.Controls.Orientation.Horizontal,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            verStack.Children.Add(new TextBlock
             {
                 Text = "Shia Prayer Times " + verStr,
                 FontSize = 11.5,
                 VerticalAlignment = VerticalAlignment.Center,
                 Foreground = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkTextSecondary : UIThemeHelper.LightTextSecondary)
+            });
+
+            var checkUpdateBtn = new System.Windows.Controls.Button
+            {
+                Content = isAr ? "🔄 التحقق من التحديثات" : "🔄 Check for Updates",
+                Padding = new Thickness(10, 4, 10, 4),
+                Margin = new Thickness(12, 0, 0, 0),
+                FontSize = 11.5,
+                Background = UIThemeHelper.GetBrush(isDark ? Color.FromRgb(51, 65, 85) : Color.FromRgb(226, 232, 240)),
+                Foreground = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkTextPrimary : UIThemeHelper.LightTextPrimary),
+                BorderThickness = new Thickness(0),
+                Cursor = System.Windows.Input.Cursors.Hand
             };
-            Grid.SetColumn(verText, 0);
-            bottomBar.Children.Add(verText);
+            checkUpdateBtn.Click += (s, e) => AppUpdater.CheckForUpdatesAsync(_settings, true, this);
+            verStack.Children.Add(checkUpdateBtn);
+
+            Grid.SetColumn(verStack, 0);
+            bottomBar.Children.Add(verStack);
 
             var buttonPanel = new StackPanel
             {
@@ -1786,9 +1807,21 @@ namespace ShiaPrayerTimes
                     : "Note: Requires \"Allow wake timers\" enabled in Windows Power Options.",
                 FontSize = 11.5,
                 Foreground = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkTextSecondary : UIThemeHelper.LightTextSecondary),
-                Margin = new Thickness(24, 0, 0, 16),
+                Margin = new Thickness(24, 0, 0, 12),
                 TextWrapping = TextWrapping.Wrap
             });
+
+            _autoUpdateCheck = new System.Windows.Controls.CheckBox
+            {
+                Content = isAr
+                    ? "التحقق تلقائياً من تحديثات البرنامج مرة واحدة يومياً عند التشغيل"
+                    : "Automatically check for updates once daily on startup",
+                IsChecked = _settings.AutoCheckUpdates,
+                Margin = new Thickness(0, 0, 0, 16),
+                FontWeight = FontWeights.SemiBold
+            };
+            UIThemeHelper.StyleCheckBox(_autoUpdateCheck, isDark);
+            panel.Children.Add(_autoUpdateCheck);
 
             // Theme & Language
             var themeLangGrid = new Grid();
@@ -2116,6 +2149,10 @@ namespace ShiaPrayerTimes
             if (_wakeFromSleepCheck != null)
             {
                 _settings.WakeFromSleepForAlerts = _wakeFromSleepCheck.IsChecked == true;
+            }
+            if (_autoUpdateCheck != null)
+            {
+                _settings.AutoCheckUpdates = _autoUpdateCheck.IsChecked == true;
             }
 
             var selTh = _themeCombo.SelectedItem as ComboBoxItem;

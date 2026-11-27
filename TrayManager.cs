@@ -770,6 +770,12 @@ namespace ShiaPrayerTimes
             });
             menu.Items.Add(settingsItem);
 
+            var updateItem = new ToolStripMenuItem(isAr ? "التحقق من التحديثات..." : "Check for Updates...", null, (s, e) =>
+            {
+                AppUpdater.CheckForUpdatesAsync(_settings, true, _mainWindow);
+            });
+            menu.Items.Add(updateItem);
+
             var testMenu = new ToolStripMenuItem(isAr ? "اختبار التنبيهات" : "Test Notifications");
             testMenu.DropDownItems.Add(new ToolStripMenuItem(isAr ? "👁️ إشعار مرئي فقط" : "👁️ Visual Toast Only", null, (s, e) => _audioNotifier.TestVisualNotification()));
             testMenu.DropDownItems.Add(new ToolStripMenuItem(isAr ? "🎵 نغمة تنبيه (Chime)" : "🎵 Chime Alert", null, (s, e) => _audioNotifier.TestChimeNotification()));
