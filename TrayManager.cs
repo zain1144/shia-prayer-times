@@ -781,6 +781,20 @@ namespace ShiaPrayerTimes
             testMenu.DropDownItems.Add(new ToolStripMenuItem(isAr ? "🎵 نغمة تنبيه (Chime)" : "🎵 Chime Alert", null, (s, e) => _audioNotifier.TestChimeNotification()));
             testMenu.DropDownItems.Add(new ToolStripMenuItem(isAr ? "📢 أذان كامل (Adhan)" : "📢 Full Adhan Alert", null, (s, e) => _audioNotifier.TestAdhanNotification()));
             testMenu.DropDownItems.Add(new ToolStripMenuItem(isAr ? "⏳ تذكير مسبق (10 دقائق)" : "⏳ Pre-Prayer Reminder (10 min)", null, (s, e) => _audioNotifier.TestReminderNotification()));
+            testMenu.DropDownItems.Add(new ToolStripSeparator());
+            testMenu.DropDownItems.Add(new ToolStripMenuItem(isAr ? "⏱️ تجربة الاستيقاظ من السكون (30 ثانية)" : "⏱️ Test Wake from Sleep (30s)", null, (s, e) =>
+            {
+                var mw = _mainWindow as MainWindow;
+                if (mw != null)
+                {
+                    DateTime target = mw.ScheduleWakeTestSeconds(30);
+                    _audioNotifier.ShowNotification(
+                        isAr ? "تم جدولة اختبار السكون" : "Sleep Wake Test Armed",
+                        isAr ? string.Format("ضع الجهاز في وضع السكون الآن — سيستيقظ ويؤذن الساعة {0:hh:mm:ss tt}.", target)
+                             : string.Format("Put PC to Sleep now — wake & Adhan scheduled for {0:hh:mm:ss tt}.", target),
+                        "⏱️");
+                }
+            }));
             menu.Items.Add(testMenu);
 
             var exitItem = new ToolStripMenuItem(isAr ? "خروج" : "Exit", null, (s, e) =>

@@ -1626,6 +1626,48 @@ namespace ShiaPrayerTimes
             };
             testBtnWrap.Children.Add(btnReminder);
 
+            // 5. Sleep Wake Test (30 seconds) - Branch feature only
+            var btnWakeTest = new System.Windows.Controls.Button
+            {
+                Content = isAr ? "⏱️ تجربة الاستيقاظ من السكون (30 ثانية)" : "⏱️ Test Wake from Sleep (30s)",
+                Padding = new Thickness(14, 8, 14, 8),
+                Margin = new Thickness(0, 0, 8, 8),
+                Background = UIThemeHelper.GetBrush(Color.FromRgb(124, 58, 237)),
+                Foreground = Brushes.White,
+                FontWeight = FontWeights.Bold,
+                BorderThickness = new Thickness(0),
+                Cursor = System.Windows.Input.Cursors.Hand,
+                FontSize = 12
+            };
+            btnWakeTest.Click += (s, e) =>
+            {
+                syncNotifParams();
+                if (_audioDeviceCombo != null && _audioDeviceCombo.SelectedItem is ComboBoxItem)
+                {
+                    var pair = ((ComboBoxItem)_audioDeviceCombo.SelectedItem).Tag as string[];
+                    if (pair != null && pair.Length == 2)
+                    {
+                        _settings.PreferredAudioDeviceId = pair[0] ?? "";
+                        _settings.PreferredAudioDeviceName = pair[1] ?? "";
+                    }
+                }
+                _settings.WakeFromSleepForAlerts = true;
+                if (_wakeFromSleepCheck != null) _wakeFromSleepCheck.IsChecked = true;
+                if (_keepAwakeCheck != null) _settings.KeepAwakeAfterPrayerWake = _keepAwakeCheck.IsChecked == true;
+                _audioNotifier.UpdateSettings(_settings);
+
+                var mw = (this.Owner as MainWindow) ?? (System.Windows.Application.Current != null ? System.Windows.Application.Current.MainWindow as MainWindow : null);
+                if (mw != null)
+                {
+                    DateTime target = mw.ScheduleWakeTestSeconds(30);
+                    testStatusLabel.Text = isAr
+                        ? string.Format("⏱️ تم ضبط اختبار السكون للساعة {0:hh:mm:ss tt} (بعد 30 ثانية) — ضع الجهاز في وضع السكون الآن!", target)
+                        : string.Format("⏱️ Sleep wake test armed for {0:hh:mm:ss tt} (30s) — put your PC to Sleep now!", target);
+                    testStatusLabel.Foreground = UIThemeHelper.GetBrush(UIThemeHelper.AccentGold);
+                }
+            };
+            testBtnWrap.Children.Add(btnWakeTest);
+
             testCardStack.Children.Add(testBtnWrap);
             testCardStack.Children.Add(testStatusLabel);
 

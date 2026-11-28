@@ -47,6 +47,7 @@ namespace ShiaPrayerTimes
 
         // Track fired notifications
         private HashSet<string> _firedAlerts = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private DateTime _scheduledTestWakeTarget = DateTime.MinValue;
 
         public MainWindow(AppSettings settings)
         {
@@ -1143,10 +1144,41 @@ namespace ShiaPrayerTimes
                 }
             }
 
+            if (_scheduledTestWakeTarget != DateTime.MinValue)
+            {
+                double testSecPast = (now - _scheduledTestWakeTarget).TotalSeconds;
+                if (testSecPast >= 0 && testSecPast <= 60)
+                {
+                    _scheduledTestWakeTarget = DateTime.MinValue;
+                    anyFired = true;
+                    AppLogger.Log("WakeTest", string.Format("Executing scheduled sleep wake test! secPast={0:0.0}", testSecPast));
+                    bool isAr = _settings.Language == "ar";
+                    string tStr = _settings.TimeFormat24H ? now.ToString("HH:mm:ss") : now.ToString("hh:mm:ss tt");
+                    _audioNotifier.TestAdhanNotification("Dhuhr", isAr ? "الظهر (اختبار)" : "Dhuhr (Test)", tStr);
+                }
+                else if (testSecPast > 60)
+                {
+                    _scheduledTestWakeTarget = DateTime.MinValue;
+                }
+            }
+
             if (anyFired)
             {
                 RefreshWakeSchedule();
             }
+        }
+
+        public DateTime ScheduleWakeTestSeconds(int delaySeconds = 30)
+        {
+            DateTime target = DateTime.Now.AddSeconds(Math.Max(10, delaySeconds));
+            _scheduledTestWakeTarget = target;
+            if (_sleepWakeManager != null)
+            {
+                _sleepWakeManager.SetKeepAwakeAfterWake(_settings.KeepAwakeAfterPrayerWake);
+                _sleepWakeManager.ScheduleWake(target);
+            }
+            AppLogger.Log("WakeTest", string.Format("Armed {0}s sleep wake test for {1:HH:mm:ss}", delaySeconds, target));
+            return target;
         }
 
         private void OnSystemWakeOrResume()
@@ -1224,6 +1256,11 @@ namespace ShiaPrayerTimes
                 }
 
                 if (earliest != DateTime.MaxValue) break;
+            }
+
+            if (_scheduledTestWakeTarget != DateTime.MinValue && _scheduledTestWakeTarget > DateTime.Now && _scheduledTestWakeTarget < earliest)
+            {
+                return _scheduledTestWakeTarget;
             }
 
             return earliest;
