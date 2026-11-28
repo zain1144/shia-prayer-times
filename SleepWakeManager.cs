@@ -109,6 +109,7 @@ namespace ShiaPrayerTimes
                     {
                         // Nudge system & display idle timers immediately so monitor/HDMI audio wake up before UI runs
                         SetThreadExecutionState(EXECUTION_STATE.ES_SYSTEM_REQUIRED | EXECUTION_STATE.ES_DISPLAY_REQUIRED);
+                        AppLogger.Log("WakeTimer", "Win32 WaitableTimer signaled! Armed target was: " + _lastArmedAlertLocal.ToString("HH:mm:ss"));
 
                         if (_dispatcher != null && !_disposed)
                         {
@@ -160,13 +161,16 @@ namespace ShiaPrayerTimes
                 }
 
                 long dueTimeFileTime = wakeLocal.ToUniversalTime().ToFileTimeUtc();
-                if (!SetWaitableTimer(_timerRawHandle, ref dueTimeFileTime, 0, IntPtr.Zero, IntPtr.Zero, true))
+                bool fResumeOk = SetWaitableTimer(_timerRawHandle, ref dueTimeFileTime, 0, IntPtr.Zero, IntPtr.Zero, true);
+                if (!fResumeOk)
                 {
                     // Fallback to non-wake timer if OS/hardware rejects fResume=true
                     SetWaitableTimer(_timerRawHandle, ref dueTimeFileTime, 0, IntPtr.Zero, IntPtr.Zero, false);
                 }
                 _scheduledWakeLocal = wakeLocal;
                 _lastArmedAlertLocal = targetAlertLocal;
+                AppLogger.Log("WakeTimer", string.Format("Armed for {0:yyyy-MM-dd HH:mm:ss} (wake at {1:HH:mm:ss}, fResume={2})",
+                    targetAlertLocal, wakeLocal, fResumeOk));
             }
         }
 

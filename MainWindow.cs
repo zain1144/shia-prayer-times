@@ -1117,6 +1117,7 @@ namespace ShiaPrayerTimes
                     {
                         _firedAlerts.Add(alertKey);
                         anyFired = true;
+                        AppLogger.Log("Alarm", string.Format("Trigger prayer={0} mode={1} soundId={2} secPast={3:0.0}", ev, cfg.NotificationMode, cfg.SoundId, secPast));
                         string tStr = _settings.TimeFormat24H ? pTime.ToString("HH:mm") : pTime.ToString("hh:mm tt");
                         _audioNotifier.TriggerPrayerNotification(namesAr[ev], ev, tStr, cfg.NotificationMode, cfg.SoundId, cfg.CustomAudioPath);
                     }
@@ -1134,6 +1135,7 @@ namespace ShiaPrayerTimes
                         {
                             _firedAlerts.Add(remKey);
                             anyFired = true;
+                            AppLogger.Log("Alarm", string.Format("Trigger reminder={0} min={1} soundId={2} secPast={3:0.0}", ev, cfg.ReminderMinutes, cfg.ReminderSoundId, remSecPast));
                             _audioNotifier.TriggerReminderNotification(namesAr[ev], ev, cfg.ReminderMinutes, cfg.ReminderSoundId, cfg.CustomReminderAudioPath);
                         }
                     }

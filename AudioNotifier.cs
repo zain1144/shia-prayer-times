@@ -16,9 +16,13 @@ namespace ShiaPrayerTimes
         private static extern int mciSendString(string command, StringBuilder returnValue, int returnLength, IntPtr winHandle);
 
         private MediaPlayer _player;
+        private WaveOutPlayer _waveOut;
         private NotifyIcon _notifyIcon;
         private AppSettings _settings;
+        private Dispatcher _dispatcher;
         private DispatcherTimer _mciPollTimer;
+        private bool _usingWaveOut = false;
+        private int _activeWaveSessionId = 0;
         private bool _usingMci = false;
         private bool _isPlaying = false;
         private string _currentTrackName = "";
@@ -38,6 +42,29 @@ namespace ShiaPrayerTimes
         {
             _settings = settings;
             _notifyIcon = notifyIcon;
+            _dispatcher = Dispatcher.CurrentDispatcher;
+
+            _waveOut = new WaveOutPlayer();
+            _waveOut.PlaybackFinished += (sessionId, stoppedByUser) =>
+            {
+                if (_dispatcher != null)
+                {
+                    _dispatcher.BeginInvoke((Action)(() =>
+                    {
+                        if (sessionId == _activeWaveSessionId && _usingWaveOut)
+                        {
+                            _usingWaveOut = false;
+                            _isPlaying = false;
+                            _currentTrackName = "";
+                            if (PlaybackStateChanged != null)
+                            {
+                                PlaybackStateChanged(false, "");
+                            }
+                        }
+                    }));
+                }
+            };
+
             _player = new MediaPlayer();
             _player.MediaEnded += Player_MediaEnded;
             _player.MediaFailed += Player_MediaFailed;
@@ -91,6 +118,10 @@ namespace ShiaPrayerTimes
 
         public void UpdateVolume()
         {
+            if (_waveOut != null)
+            {
+                _waveOut.SetVolume(_settings.Volume, _settings.IsMuted);
+            }
             if (_usingMci && _isPlaying)
             {
                 int mciVol = _settings.IsMuted ? 0 : Math.Max(0, Math.Min(1000, _settings.Volume * 10));
@@ -191,8 +222,14 @@ namespace ShiaPrayerTimes
         {
             try
             {
-                if (!File.Exists(filePath)) return;
+                if (!File.Exists(filePath))
+                {
+                    AppLogger.Log("Audio", "Missing audio file: " + filePath);
+                    return;
+                }
 
+                _usingWaveOut = false;
+                if (_waveOut != null) _waveOut.Stop();
                 _mciPollTimer.Stop();
                 CloseMci();
                 if (_player != null)
@@ -201,9 +238,26 @@ namespace ShiaPrayerTimes
                 }
 
                 string resolvedName = string.IsNullOrEmpty(trackName) ? Path.GetFileName(filePath) : trackName;
+                AppLogger.Log("Audio", "Playing: " + filePath + " (vol=" + _settings.Volume + ", muted=" + _settings.IsMuted + ")");
 
-                // Primary engine: winmm.dll MCI plays directly through Windows Multimedia mixer
-                // without waiting for WPF/DWM desktop composition (works with screen off / locked / unattended wake).
+                // Primary engine: MediaFoundation -> winmm waveOutWrite (raw PCM hardware mixer).
+                // Works reliably when Windows is locked, monitor is off, or waking from Sleep.
+                int sessionId;
+                if (_waveOut != null && _waveOut.PlayAsync(filePath, _settings.Volume, _settings.IsMuted, out sessionId))
+                {
+                    _activeWaveSessionId = sessionId;
+                    _usingWaveOut = true;
+                    _isPlaying = true;
+                    _currentTrackName = resolvedName;
+
+                    if (PlaybackStateChanged != null)
+                    {
+                        PlaybackStateChanged(true, _currentTrackName);
+                    }
+                    return;
+                }
+
+                // Secondary engine: winmm.dll MCI
                 int openRes = mciSendString("open \"" + filePath + "\" type mpegvideo alias " + MciAlias, null, 0, IntPtr.Zero);
                 if (openRes != 0)
                 {
@@ -222,6 +276,7 @@ namespace ShiaPrayerTimes
                         _isPlaying = true;
                         _currentTrackName = resolvedName;
                         _mciPollTimer.Start();
+                        AppLogger.Log("Audio", "Playing via MCI fallback: " + filePath);
 
                         if (PlaybackStateChanged != null)
                         {
@@ -232,13 +287,14 @@ namespace ShiaPrayerTimes
                     CloseMci();
                 }
 
-                // Fallback engine: WPF MediaPlayer for codecs outside MCI
+                // Final fallback: WPF MediaPlayer
                 _usingMci = false;
                 _player.Open(new Uri(filePath, UriKind.Absolute));
                 UpdateVolume();
                 _player.Play();
                 _isPlaying = true;
                 _currentTrackName = resolvedName;
+                AppLogger.Log("Audio", "Playing via WPF MediaPlayer fallback: " + filePath);
 
                 if (PlaybackStateChanged != null)
                 {
@@ -247,6 +303,7 @@ namespace ShiaPrayerTimes
             }
             catch (Exception ex)
             {
+                AppLogger.Log("Audio", "Audio play error: " + ex.Message);
                 Console.WriteLine("Audio play error: " + ex.Message);
                 _isPlaying = false;
                 if (PlaybackStateChanged != null) PlaybackStateChanged(false, "");
@@ -255,6 +312,8 @@ namespace ShiaPrayerTimes
 
         public void Stop()
         {
+            _usingWaveOut = false;
+            if (_waveOut != null) _waveOut.Stop();
             _mciPollTimer.Stop();
             CloseMci();
             try
@@ -359,8 +418,6 @@ namespace ShiaPrayerTimes
                     : string.Format("It is now time for {0} ({1})", prayerNameEn, timeStr);
             }
 
-            ShowNotification(title, body, isPrayer ? "🕌" : "⏰");
-
             if (mode == "Chime")
             {
                 PlayChime();
@@ -369,6 +426,8 @@ namespace ShiaPrayerTimes
             {
                 PlayAdhan(prayerNameEn, soundId, customAudioPath);
             }
+
+            try { ShowNotification(title, body, isPrayer ? "🕌" : "⏰"); } catch { }
         }
 
         public void TriggerReminderNotification(string prayerNameAr, string prayerNameEn, int minutesBefore, string reminderSoundId = "chime", string customPath = "")
@@ -392,12 +451,12 @@ namespace ShiaPrayerTimes
                     : string.Format("{0} will be in {1} minutes", prayerNameEn, minutesBefore);
             }
 
-            ShowNotification(title, body, "⏳");
-
             if (reminderSoundId != "silent" && reminderSoundId != "off" && reminderSoundId != "Off")
             {
                 PlayReminderSound(reminderSoundId, customPath);
             }
+
+            try { ShowNotification(title, body, "⏳"); } catch { }
         }
 
         public void TestVisualNotification(string prayerNameAr = "الظهر", string prayerNameEn = "Dhuhr", string timeStr = "12:00 م")

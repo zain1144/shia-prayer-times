@@ -4,6 +4,17 @@ All notable changes to **Shia Prayer Times (أوقات الصلاة الشيعي
 
 ---
 
+## [v1.2.1] - 2026-11-28
+
+### 🐛 Fixed | الإصلاحات
+- **Reliable Adhan Audio on Lock Screen & Sleep Resume (`WaveOutPlayer.cs`, `AudioNotifier.cs`):**
+  - Replaced DirectShow MCI (`type mpegvideo`) as the primary playback engine with direct **Media Foundation (`MFCreateSourceReaderFromURL`) -> `winmm.dll` `waveOutOpen` / `waveOutWrite`** raw PCM hardware streaming (retaining MCI and WPF `MediaPlayer` only as fallbacks).
+  - Eliminates DirectShow/COM window-station stalls when Windows is locked (`Winlogon` Lock Screen), screen is off, or USB audio devices re-enumerate right after Sleep resume (includes automatic `waveOutOpen` retry).
+  - Starts audio playback before displaying the WPF Toast notification window so UI visual state can never delay or block Adhan audio.
+  - Added lightweight rotating diagnostic log (`%APPDATA%\ShiaPrayerTimes\app.log`) recording wake timer firing, alarm triggers, and audio engine status.
+
+---
+
 ## [v1.2.0] - 2026-11-27
 
 ### ✨ Added | الإضافات الجديدة
