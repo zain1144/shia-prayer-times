@@ -74,6 +74,55 @@ namespace ShiaPrayerTimes
         [DllImport("user32.dll", SetLastError = true)]
         private static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
 
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MOUSEINPUT
+        {
+            public int dx;
+            public int dy;
+            public uint mouseData;
+            public uint dwFlags;
+            public uint time;
+            public IntPtr dwExtraInfo;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct KEYBDINPUT
+        {
+            public ushort wVk;
+            public ushort wScan;
+            public uint dwFlags;
+            public uint time;
+            public IntPtr dwExtraInfo;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct HARDWAREINPUT
+        {
+            public uint uMsg;
+            public ushort wParamL;
+            public ushort wParamH;
+        }
+
+        [StructLayout(LayoutKind.Explicit)]
+        private struct InputUnion
+        {
+            [FieldOffset(0)] public MOUSEINPUT mi;
+            [FieldOffset(0)] public KEYBDINPUT ki;
+            [FieldOffset(0)] public HARDWAREINPUT hi;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct INPUT
+        {
+            public int type;
+            public InputUnion u;
+        }
+
+        private const int INPUT_MOUSE = 0;
+        private const uint MOUSEEVENTF_MOVE = 0x0001;
         private static readonly IntPtr HWND_BROADCAST = new IntPtr(0xFFFF);
         private const uint WM_SYSCOMMAND = 0x0112;
         private static readonly IntPtr SC_MONITORPOWER = new IntPtr(0xF170);
@@ -165,6 +214,21 @@ namespace ShiaPrayerTimes
             }
         }
 
+        private void NudgeMonitorWake()
+        {
+            try { PostMessage(HWND_BROADCAST, WM_SYSCOMMAND, SC_MONITORPOWER, MONITOR_ON); } catch { }
+            try
+            {
+                // 0-delta mouse move helps exit Windows Unattended Wake without moving cursor or unlocking
+                var inputs = new INPUT[]
+                {
+                    new INPUT { type = INPUT_MOUSE, u = new InputUnion { mi = new MOUSEINPUT { dx = 0, dy = 0, dwFlags = MOUSEEVENTF_MOVE } } }
+                };
+                SendInput(1, inputs, Marshal.SizeOf(typeof(INPUT)));
+            }
+            catch { }
+        }
+
         private void WaitLoop()
         {
             WaitHandle[] handles = new WaitHandle[] { _signalEvent, _timerWaitHandle };
@@ -179,7 +243,7 @@ namespace ShiaPrayerTimes
                     {
                         // Nudge system & display idle timers immediately so monitor/HDMI audio wake up before UI runs
                         SetThreadExecutionState(EXECUTION_STATE.ES_SYSTEM_REQUIRED | EXECUTION_STATE.ES_DISPLAY_REQUIRED);
-                        try { PostMessage(HWND_BROADCAST, WM_SYSCOMMAND, SC_MONITORPOWER, MONITOR_ON); } catch { }
+                        NudgeMonitorWake();
                         AppLogger.Log("WakeTimer", "Win32 WaitableTimer signaled! Armed target was: " + _lastArmedAlertLocal.ToString("HH:mm:ss"));
 
                         if (_dispatcher != null && !_disposed)
@@ -285,7 +349,7 @@ namespace ShiaPrayerTimes
             }
             _wakeHoldTimer.Stop();
             _wakeHoldTimer.Start();
-            try { PostMessage(HWND_BROADCAST, WM_SYSCOMMAND, SC_MONITORPOWER, MONITOR_ON); } catch { }
+            NudgeMonitorWake();
             UpdateExecutionStateOnUiThread();
         }
 

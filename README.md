@@ -5,13 +5,15 @@ A lightweight, offline-capable, standalone Windows desktop application designed 
 
 ---
 
-## 🌟 Version 1.2.2 Highlights (Latest)
+## 🌟 Version 1.3.0 Highlights (Latest)
 
 See the full version history in [CHANGELOG.md](CHANGELOG.md) and [GitHub Releases](https://github.com/zain1144/shia-prayer-times/releases).
 
-1. **Built-In In-App Auto-Updater (تحديث تلقائي من داخل البرنامج):**
+1. **Choose Dedicated Adhan Speaker (اختيار سماعة إخراج الأذان):**
+   - Pick which exact Windows audio output device plays the Adhan (e.g. external speakers while keeping headphones as Windows default) under **Settings → Audio & System**, with instant speaker testing.
+2. **Built-In In-App Auto-Updater (تحديث تلقائي من داخل البرنامج):**
    - Checks GitHub Releases once daily on startup (and on demand via Settings or the System Tray menu), shows release changelogs, downloads with live progress, and safely replaces `ShiaPrayerTimes.exe` (automatically requesting UAC elevation if placed inside `C:\` or `C:\Program Files\`).
-2. **Wake from Sleep, Keep Awake Option & Lock-Screen Adhan Streaming:**
+3. **Wake from Sleep, Keep Awake Option & Lock-Screen Adhan Streaming:**
    - Schedules Win32 wakeable timers (`SetWaitableTimer`) for upcoming enabled alerts, holds `PowerCreateRequest` (`PowerRequestSystemRequired`) so Windows does not return the PC to sleep after 2 minutes (toggleable in Settings via *Keep PC awake after waking for Adhan*), and streams audio via Media Foundation + `winmm.dll` `waveOutWrite`.
    - Schedules Win32 wakeable timers (`SetWaitableTimer`) for upcoming enabled Adhan/reminder alerts, wakes the display & HDMI/DisplayPort audio endpoints cleanly (`ES_DISPLAY_REQUIRED`), and keeps the PC awake until long Adhan playback finishes.
 3. **System Tray & Notification Refinements:**

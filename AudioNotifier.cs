@@ -218,7 +218,25 @@ namespace ShiaPrayerTimes
             }
         }
 
+        public void TestSpeakerDevice(string deviceId, string deviceName)
+        {
+            string testFile = _settings.ResolveSoundPath("Dhuhr", "chime", "");
+            if (string.IsNullOrEmpty(testFile) || !File.Exists(testFile))
+            {
+                testFile = AppSettings.EnsureExtractedResource("chime.wav");
+            }
+            if (!string.IsNullOrEmpty(testFile) && File.Exists(testFile))
+            {
+                PlayAudioFileOnDevice(testFile, "Test Speaker", deviceId, deviceName);
+            }
+        }
+
         public void PlayAudioFile(string filePath, string trackName = "")
+        {
+            PlayAudioFileOnDevice(filePath, trackName, _settings.PreferredAudioDeviceId, _settings.PreferredAudioDeviceName);
+        }
+
+        private void PlayAudioFileOnDevice(string filePath, string trackName, string deviceId, string deviceName)
         {
             try
             {
@@ -243,7 +261,7 @@ namespace ShiaPrayerTimes
                 // Primary engine: MediaFoundation -> winmm waveOutWrite (raw PCM hardware mixer).
                 // Works reliably when Windows is locked, monitor is off, or waking from Sleep.
                 int sessionId;
-                if (_waveOut != null && _waveOut.PlayAsync(filePath, _settings.Volume, _settings.IsMuted, out sessionId))
+                if (_waveOut != null && _waveOut.PlayAsync(filePath, _settings.Volume, _settings.IsMuted, deviceId, deviceName, out sessionId))
                 {
                     _activeWaveSessionId = sessionId;
                     _usingWaveOut = true;

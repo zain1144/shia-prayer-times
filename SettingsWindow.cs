@@ -53,6 +53,7 @@ namespace ShiaPrayerTimes
         private System.Windows.Controls.Slider _volSlider;
         private TextBlock _volLabel;
         private System.Windows.Controls.CheckBox _muteCheck;
+        private System.Windows.Controls.ComboBox _audioDeviceCombo;
         private StackPanel _adhanLibraryListPanel;
         private System.Windows.Controls.CheckBox _startupCheck;
         private System.Windows.Controls.CheckBox _closeToTrayCheck;
@@ -1346,6 +1347,100 @@ namespace ShiaPrayerTimes
             volPanel.Children.Add(_muteCheck);
             panel.Children.Add(volPanel);
 
+            // Audio Output Speaker Selection
+            panel.Children.Add(UIThemeHelper.CreateLabel(
+                isAr ? "🔊 مخرج الصوت (السماعة المستخدمة للأذان والتنبيهات):" : "🔊 Audio Output Device (Adhan Speaker):",
+                isDark, true, 13));
+
+            var devRow = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, Margin = new Thickness(0, 6, 0, 4) };
+            _audioDeviceCombo = new System.Windows.Controls.ComboBox { Width = 380, Height = 32 };
+            UIThemeHelper.StyleComboBox(_audioDeviceCombo, isDark);
+
+            Action populateAudioDevices = () =>
+            {
+                string curId = _settings.PreferredAudioDeviceId ?? "";
+                string curName = _settings.PreferredAudioDeviceName ?? "";
+                if (_audioDeviceCombo.SelectedItem is ComboBoxItem)
+                {
+                    var sel = _audioDeviceCombo.SelectedItem as ComboBoxItem;
+                    var pair = sel.Tag as string[];
+                    if (pair != null && pair.Length == 2)
+                    {
+                        curId = pair[0] ?? "";
+                        curName = pair[1] ?? "";
+                    }
+                }
+
+                _audioDeviceCombo.Items.Clear();
+                _audioDeviceCombo.Items.Add(new ComboBoxItem
+                {
+                    Content = isAr ? "الافتراضي في ويندوز (Windows Default)" : "Windows Default Output Device",
+                    Tag = new string[] { "", "" }
+                });
+
+                int selIdx = 0;
+                var devices = WaveOutPlayer.GetAudioOutputDevices();
+                foreach (var d in devices)
+                {
+                    int idx = _audioDeviceCombo.Items.Add(new ComboBoxItem
+                    {
+                        Content = d.Name,
+                        Tag = new string[] { d.EndpointId ?? "", d.Name ?? "" }
+                    });
+                    if ((!string.IsNullOrEmpty(curId) && string.Equals(curId, d.EndpointId, StringComparison.OrdinalIgnoreCase)) ||
+                        (string.IsNullOrEmpty(curId) && !string.IsNullOrEmpty(curName) && string.Equals(curName, d.Name, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        selIdx = idx;
+                    }
+                }
+                _audioDeviceCombo.SelectedIndex = selIdx;
+            };
+            populateAudioDevices();
+
+            var refreshDevBtn = new System.Windows.Controls.Button
+            {
+                Content = "🔄",
+                Width = 34,
+                Height = 32,
+                Margin = new Thickness(8, 0, 0, 0),
+                Background = UIThemeHelper.GetBrush(isDark ? Color.FromRgb(51, 65, 85) : Color.FromRgb(226, 232, 240)),
+                Foreground = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkTextPrimary : UIThemeHelper.LightTextPrimary),
+                BorderThickness = new Thickness(0),
+                Cursor = System.Windows.Input.Cursors.Hand,
+                ToolTip = isAr ? "تحديث قائمة السماعات" : "Refresh speaker list"
+            };
+            refreshDevBtn.Click += (s, e) => populateAudioDevices();
+
+            var testDevBtn = new System.Windows.Controls.Button
+            {
+                Content = isAr ? "🔊 تجربة السماعة" : "🔊 Test Speaker",
+                Padding = new Thickness(12, 0, 12, 0),
+                Height = 32,
+                Margin = new Thickness(8, 0, 0, 0),
+                Background = UIThemeHelper.GetBrush(UIThemeHelper.AccentEmerald),
+                Foreground = Brushes.White,
+                FontWeight = FontWeights.SemiBold,
+                BorderThickness = new Thickness(0),
+                Cursor = System.Windows.Input.Cursors.Hand,
+                FontSize = 12
+            };
+            testDevBtn.Click += (s, e) =>
+            {
+                var sel = _audioDeviceCombo.SelectedItem as ComboBoxItem;
+                var pair = sel != null ? (sel.Tag as string[]) : null;
+                string dId = (pair != null && pair.Length == 2) ? pair[0] : "";
+                string dName = (pair != null && pair.Length == 2) ? pair[1] : "";
+                _settings.Volume = (int)Math.Round(_volSlider.Value);
+                _settings.IsMuted = _muteCheck.IsChecked == true;
+                _audioNotifier.UpdateSettings(_settings);
+                _audioNotifier.TestSpeakerDevice(dId, dName);
+            };
+
+            devRow.Children.Add(_audioDeviceCombo);
+            devRow.Children.Add(refreshDevBtn);
+            devRow.Children.Add(testDevBtn);
+            panel.Children.Add(devRow);
+
             // -------------------------------------------------------------
             // Dedicated Notification Types Test Section (اختبار أنواع التنبيهات)
             // -------------------------------------------------------------
@@ -2159,6 +2254,15 @@ namespace ShiaPrayerTimes
             // 4. Audio & System tab
             _settings.Volume = (int)Math.Round(_volSlider.Value);
             _settings.IsMuted = _muteCheck.IsChecked == true;
+            if (_audioDeviceCombo != null && _audioDeviceCombo.SelectedItem is ComboBoxItem)
+            {
+                var pair = ((ComboBoxItem)_audioDeviceCombo.SelectedItem).Tag as string[];
+                if (pair != null && pair.Length == 2)
+                {
+                    _settings.PreferredAudioDeviceId = pair[0] ?? "";
+                    _settings.PreferredAudioDeviceName = pair[1] ?? "";
+                }
+            }
 
             _settings.AutoStartWithWindows = _startupCheck.IsChecked == true;
             _settings.MinimizeToTrayOnClose = _closeToTrayCheck.IsChecked == true;

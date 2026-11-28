@@ -4,6 +4,18 @@ All notable changes to **Shia Prayer Times (أوقات الصلاة الشيعي
 
 ---
 
+## [v1.3.0] - 2026-11-28
+
+### ✨ Added | الإضافات الجديدة
+- **Dedicated Audio Output Speaker Selector (`WaveOutPlayer.cs`, `SettingsWindow.cs`, `AppSettings.cs`, `AudioNotifier.cs`):**
+  - Added an **Audio Output Device (Adhan Speaker)** dropdown in **Settings → Audio & System** with full Windows speaker names resolved via `DRV_QUERYFUNCTIONINSTANCEID` + Core Audio `IMMDeviceEnumerator`.
+  - Allows routing Adhan & reminder audio to a specific speaker (for example, dedicated **External Speakers** even when headphones are set as the Windows Default device), complete with **🔄 Refresh** and **🔊 Test Speaker** buttons.
+  - Persists both Endpoint ID (`PreferredAudioDeviceId`) and name (`PreferredAudioDeviceName`) in `settings.json`, cleanly falling back to Windows Default (`WAVE_MAPPER`) if disconnected.
+- **Unattended Wake Console Activity Nudge (`SleepWakeManager.cs`):**
+  - Added a 0-delta `SendInput` wake nudge alongside `PowerRequestDisplayRequired` + `SC_MONITORPOWER` on timer wake to help wake the display onto the Lock Screen when waking from Sleep (without unlocking your account).
+
+---
+
 ## [v1.2.2] - 2026-11-28
 
 ### ✨ Added & Fixed | التحسينات والإصلاحات

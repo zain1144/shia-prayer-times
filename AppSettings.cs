@@ -130,6 +130,8 @@ namespace ShiaPrayerTimes
 
         public int Volume { get; set; }                   // 0 - 100
         public bool IsMuted { get; set; }
+        public string PreferredAudioDeviceId { get; set; }
+        public string PreferredAudioDeviceName { get; set; }
         public string DefaultAdhanPath { get; set; }
         public string DefaultFajrAdhanPath { get; set; }
 
@@ -190,6 +192,8 @@ namespace ShiaPrayerTimes
 
             Volume = 85;
             IsMuted = false;
+            PreferredAudioDeviceId = "";
+            PreferredAudioDeviceName = "";
             DefaultAdhanPath = "";
             DefaultFajrAdhanPath = "";
 

@@ -35,6 +35,13 @@ namespace ShiaPrayerTimes
         }
     }
 
+    public class AudioOutputDeviceInfo
+    {
+        public int DeviceIndex { get; set; }
+        public string EndpointId { get; set; }
+        public string Name { get; set; }
+    }
+
     /// <summary>
     /// Pure native Windows audio player using Media Foundation (IMFSourceReader -> PCM)
     /// and winmm.dll waveOutOpen / waveOutWrite. Streams directly to the Windows audio mixer
@@ -48,6 +55,9 @@ namespace ShiaPrayerTimes
         private const int WAVE_MAPPER = -1;
         private const int WAVE_FORMAT_PCM = 1;
         private const int WHDR_DONE = 0x00000001;
+        private const int DRV_RESERVED = 0x0800;
+        private const int DRV_QUERYFUNCTIONINSTANCEID = DRV_RESERVED + 17;
+        private const int DRV_QUERYFUNCTIONINSTANCEIDSIZE = DRV_RESERVED + 18;
 
         private static readonly Guid MF_MT_MAJOR_TYPE = new Guid("48eba18e-f8c9-4687-bf11-0a74c9f96a8f");
         private static readonly Guid MFMediaType_Audio = new Guid("73647561-0000-0010-8000-00AA00389B71");
@@ -70,6 +80,18 @@ namespace ShiaPrayerTimes
         private static extern int MFCreateSourceReaderFromURL(string pwszURL, IntPtr pAttributes, out IMFSourceReader ppSourceReader);
 
         [DllImport("winmm.dll")]
+        private static extern int waveOutGetNumDevs();
+
+        [DllImport("winmm.dll", CharSet = CharSet.Unicode)]
+        private static extern int waveOutGetDevCaps(IntPtr uDeviceID, out WAVEOUTCAPS pwoc, int cbwoc);
+
+        [DllImport("winmm.dll")]
+        private static extern int waveOutMessage(IntPtr hwo, int uMsg, out int dwParam1, IntPtr dwParam2);
+
+        [DllImport("winmm.dll", CharSet = CharSet.Unicode)]
+        private static extern int waveOutMessage(IntPtr hwo, int uMsg, System.Text.StringBuilder dwParam1, int dwParam2);
+
+        [DllImport("winmm.dll")]
         private static extern int waveOutOpen(out IntPtr hWaveOut, int uDeviceID, ref WAVEFORMATEX lpFormat, IntPtr dwCallback, IntPtr dwInstance, int fdwOpen);
 
         [DllImport("winmm.dll")]
@@ -89,6 +111,64 @@ namespace ShiaPrayerTimes
 
         [DllImport("winmm.dll")]
         private static extern int waveOutSetVolume(IntPtr hWaveOut, uint dwVolume);
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        private struct WAVEOUTCAPS
+        {
+            public ushort wMid;
+            public ushort wPid;
+            public uint vDriverVersion;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
+            public string szPname;
+            public uint dwFormats;
+            public ushort wChannels;
+            public ushort wReserved1;
+            public uint dwSupport;
+        }
+
+        [ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")]
+        private class MMDeviceEnumeratorCom { }
+
+        [ComImport, InterfaceType(ComInterfaceType.InterfaceIsIUnknown), Guid("A95664D2-9614-4F35-A746-DE8DB63617E6")]
+        private interface IMMDeviceEnumerator
+        {
+            [PreserveSig] int EnumAudioEndpoints(int dataFlow, int dwStateMask, out IntPtr ppDevices);
+            [PreserveSig] int GetDefaultAudioEndpoint(int dataFlow, int role, out IMMDevice ppEndpoint);
+            [PreserveSig] int GetDevice([MarshalAs(UnmanagedType.LPWStr)] string pwstrId, out IMMDevice ppDevice);
+        }
+
+        [ComImport, InterfaceType(ComInterfaceType.InterfaceIsIUnknown), Guid("D666063F-1587-4E43-81F1-B948E807363F")]
+        private interface IMMDevice
+        {
+            [PreserveSig] int Activate(ref Guid iid, int dwClsCtx, IntPtr pActivationParams, out IntPtr ppInterface);
+            [PreserveSig] int OpenPropertyStore(int stgmAccess, out IPropertyStore ppProperties);
+            [PreserveSig] int GetId([MarshalAs(UnmanagedType.LPWStr)] out string ppstrId);
+            [PreserveSig] int GetState(out int pdwState);
+        }
+
+        [ComImport, InterfaceType(ComInterfaceType.InterfaceIsIUnknown), Guid("886d8eeb-8cf2-4446-8d02-cdba1dbdcf99")]
+        private interface IPropertyStore
+        {
+            [PreserveSig] int GetCount(out int cProps);
+            [PreserveSig] int GetAt(int iProp, out PROPERTYKEY pkey);
+            [PreserveSig] int GetValue(ref PROPERTYKEY key, out PROPVARIANT pv);
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct PROPERTYKEY
+        {
+            public Guid fmtid;
+            public int pid;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct PROPVARIANT
+        {
+            public ushort vt;
+            public ushort r1, r2, r3;
+            public IntPtr p;
+            public IntPtr p2;
+        }
 
         [StructLayout(LayoutKind.Sequential)]
         private struct WAVEFORMATEX
@@ -240,7 +320,141 @@ namespace ShiaPrayerTimes
             catch { }
         }
 
+        public static List<AudioOutputDeviceInfo> GetAudioOutputDevices()
+        {
+            var list = new List<AudioOutputDeviceInfo>();
+            IMMDeviceEnumerator enumerator = null;
+            try { enumerator = (IMMDeviceEnumerator)(new MMDeviceEnumeratorCom()); } catch { }
+            var pkey = new PROPERTYKEY { fmtid = new Guid("a45c254e-df1c-4efd-8020-67d146a850e0"), pid = 14 };
+
+            try
+            {
+                int count = waveOutGetNumDevs();
+                for (int i = 0; i < count; i++)
+                {
+                    string devId = "";
+                    string friendly = "";
+
+                    try
+                    {
+                        int cbSize = 0;
+                        if (waveOutMessage((IntPtr)i, DRV_QUERYFUNCTIONINSTANCEIDSIZE, out cbSize, IntPtr.Zero) == 0 && cbSize > 0)
+                        {
+                            var sb = new System.Text.StringBuilder(cbSize / 2 + 2);
+                            if (waveOutMessage((IntPtr)i, DRV_QUERYFUNCTIONINSTANCEID, sb, cbSize) == 0)
+                            {
+                                devId = sb.ToString();
+                            }
+                        }
+
+                        if (!string.IsNullOrEmpty(devId) && enumerator != null)
+                        {
+                            IMMDevice dev;
+                            if (enumerator.GetDevice(devId, out dev) == 0 && dev != null)
+                            {
+                                try
+                                {
+                                    IPropertyStore store;
+                                    if (dev.OpenPropertyStore(0, out store) == 0 && store != null)
+                                    {
+                                        try
+                                        {
+                                            PROPVARIANT pv;
+                                            if (store.GetValue(ref pkey, out pv) == 0 && pv.vt == 31 && pv.p != IntPtr.Zero)
+                                            {
+                                                friendly = Marshal.PtrToStringUni(pv.p);
+                                                Marshal.FreeCoTaskMem(pv.p);
+                                            }
+                                        }
+                                        finally { Marshal.ReleaseComObject(store); }
+                                    }
+                                }
+                                finally { Marshal.ReleaseComObject(dev); }
+                            }
+                        }
+                    }
+                    catch { }
+
+                    if (string.IsNullOrEmpty(friendly))
+                    {
+                        try
+                        {
+                            WAVEOUTCAPS caps;
+                            if (waveOutGetDevCaps((IntPtr)i, out caps, Marshal.SizeOf(typeof(WAVEOUTCAPS))) == 0)
+                            {
+                                friendly = caps.szPname;
+                            }
+                        }
+                        catch { }
+                    }
+
+                    if (string.IsNullOrEmpty(friendly))
+                    {
+                        friendly = "Audio Output #" + (i + 1);
+                    }
+
+                    list.Add(new AudioOutputDeviceInfo
+                    {
+                        DeviceIndex = i,
+                        EndpointId = devId ?? "",
+                        Name = friendly
+                    });
+                }
+            }
+            catch { }
+            finally
+            {
+                if (enumerator != null)
+                {
+                    try { Marshal.ReleaseComObject(enumerator); } catch { }
+                }
+            }
+            return list;
+        }
+
+        private static int ResolveWaveOutDeviceId(string preferredEndpointId, string preferredName, out string resolvedName)
+        {
+            resolvedName = "Windows Default";
+            if (string.IsNullOrEmpty(preferredEndpointId) && string.IsNullOrEmpty(preferredName))
+            {
+                return WAVE_MAPPER;
+            }
+
+            var devices = GetAudioOutputDevices();
+            if (!string.IsNullOrEmpty(preferredEndpointId))
+            {
+                foreach (var d in devices)
+                {
+                    if (string.Equals(d.EndpointId, preferredEndpointId, StringComparison.OrdinalIgnoreCase))
+                    {
+                        resolvedName = d.Name;
+                        return d.DeviceIndex;
+                    }
+                }
+            }
+
+            if (!string.IsNullOrEmpty(preferredName))
+            {
+                foreach (var d in devices)
+                {
+                    if (string.Equals(d.Name, preferredName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        resolvedName = d.Name;
+                        return d.DeviceIndex;
+                    }
+                }
+            }
+
+            AppLogger.Log("WaveOut", "Preferred speaker not found (" + preferredName + "), falling back to Windows Default.");
+            return WAVE_MAPPER;
+        }
+
         public bool PlayAsync(string filePath, int volumePercent, bool isMuted, out int sessionId)
+        {
+            return PlayAsync(filePath, volumePercent, isMuted, "", "", out sessionId);
+        }
+
+        public bool PlayAsync(string filePath, int volumePercent, bool isMuted, string preferredDeviceId, string preferredDeviceName, out int sessionId)
         {
             Stop();
 
@@ -318,7 +532,7 @@ namespace ShiaPrayerTimes
                 return false;
             }
 
-            _playThread = new Thread(() => StreamThreadProc(filePath, mySession))
+            _playThread = new Thread(() => StreamThreadProc(filePath, mySession, preferredDeviceId, preferredDeviceName))
             {
                 IsBackground = true,
                 Name = "WaveOutAudioThread"
@@ -338,7 +552,7 @@ namespace ShiaPrayerTimes
             }
         }
 
-        private void StreamThreadProc(string filePath, int sessionId)
+        private void StreamThreadProc(string filePath, int sessionId, string preferredDeviceId, string preferredDeviceName)
         {
             bool mfStarted = false;
             IMFSourceReader reader = null;
@@ -379,13 +593,28 @@ namespace ShiaPrayerTimes
                     cbSize = 0
                 };
 
-                // Retry briefly in case USB audio device is still waking after S3 Sleep resume
+                // Retry briefly in case USB/audio device is still waking after S3 Sleep resume
+                string resolvedDevName = "Windows Default";
                 int openRes = -1;
+                int openedDevId = WAVE_MAPPER;
                 for (int attempt = 0; attempt < 8 && !_stopRequested; attempt++)
                 {
-                    openRes = waveOutOpen(out hWaveOut, WAVE_MAPPER, ref wfx, IntPtr.Zero, IntPtr.Zero, 0);
+                    openedDevId = ResolveWaveOutDeviceId(preferredDeviceId, preferredDeviceName, out resolvedDevName);
+                    openRes = waveOutOpen(out hWaveOut, openedDevId, ref wfx, IntPtr.Zero, IntPtr.Zero, 0);
                     if (openRes == 0 && hWaveOut != IntPtr.Zero) break;
-                    AppLogger.Log("WaveOut", "waveOutOpen attempt " + attempt + " failed code=" + openRes);
+
+                    // If specific device failed on final attempt, try WAVE_MAPPER
+                    if (attempt >= 4 && openedDevId != WAVE_MAPPER)
+                    {
+                        openRes = waveOutOpen(out hWaveOut, WAVE_MAPPER, ref wfx, IntPtr.Zero, IntPtr.Zero, 0);
+                        if (openRes == 0 && hWaveOut != IntPtr.Zero)
+                        {
+                            resolvedDevName = "Windows Default (fallback)";
+                            openedDevId = WAVE_MAPPER;
+                            break;
+                        }
+                    }
+                    AppLogger.Log("WaveOut", "waveOutOpen attempt " + attempt + " dev=" + openedDevId + " failed code=" + openRes);
                     Thread.Sleep(300);
                 }
 
@@ -397,7 +626,7 @@ namespace ShiaPrayerTimes
 
                 lock (_stateLock) { _activeWaveOut = hWaveOut; }
                 ApplyWaveVolume(hWaveOut);
-                AppLogger.Log("WaveOut", "Started streaming PCM via waveOut: " + Path.GetFileName(filePath));
+                AppLogger.Log("WaveOut", "Started streaming PCM via waveOut (dev=" + openedDevId + " \"" + resolvedDevName + "\"): " + Path.GetFileName(filePath));
 
                 const int maxQueuedBuffers = 6;
 

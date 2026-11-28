@@ -5,9 +5,9 @@ using System.Windows;
 
 [assembly: AssemblyTitle("Shia Prayer Times")]
 [assembly: AssemblyProduct("Shia (Jafari) Prayer Times Desktop")]
-[assembly: AssemblyVersion("1.2.2.0")]
-[assembly: AssemblyFileVersion("1.2.2.0")]
-[assembly: AssemblyInformationalVersion("1.2.2")]
+[assembly: AssemblyVersion("1.3.0.0")]
+[assembly: AssemblyFileVersion("1.3.0.0")]
+[assembly: AssemblyInformationalVersion("1.3.0")]
 
 namespace ShiaPrayerTimes
 {
