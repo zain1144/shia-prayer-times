@@ -58,6 +58,7 @@ namespace ShiaPrayerTimes
         private System.Windows.Controls.CheckBox _closeToTrayCheck;
         private System.Windows.Controls.CheckBox _showTrayNotifyCheck;
         private System.Windows.Controls.CheckBox _wakeFromSleepCheck;
+        private System.Windows.Controls.CheckBox _keepAwakeCheck;
         private System.Windows.Controls.CheckBox _autoUpdateCheck;
         private System.Windows.Controls.ComboBox _themeCombo;
         private System.Windows.Controls.ComboBox _langCombo;
@@ -1807,9 +1808,25 @@ namespace ShiaPrayerTimes
                     : "Note: Requires \"Allow wake timers\" enabled in Windows Power Options.",
                 FontSize = 11.5,
                 Foreground = UIThemeHelper.GetBrush(isDark ? UIThemeHelper.DarkTextSecondary : UIThemeHelper.LightTextSecondary),
-                Margin = new Thickness(24, 0, 0, 12),
+                Margin = new Thickness(24, 0, 0, 8),
                 TextWrapping = TextWrapping.Wrap
             });
+
+            _keepAwakeCheck = new System.Windows.Controls.CheckBox
+            {
+                Content = isAr
+                    ? "إبقاء الجهاز مستيقظاً بعد الاستيقاظ للأذان (عدم إعادته للسكون تلقائياً)"
+                    : "Keep PC awake after waking for Adhan (prevent auto-returning to sleep)",
+                IsChecked = _settings.KeepAwakeAfterPrayerWake,
+                Margin = new Thickness(24, 0, 0, 14),
+                FontWeight = FontWeights.Normal,
+                IsEnabled = _settings.WakeFromSleepForAlerts
+            };
+            UIThemeHelper.StyleCheckBox(_keepAwakeCheck, isDark);
+            panel.Children.Add(_keepAwakeCheck);
+
+            _wakeFromSleepCheck.Checked += (s, e) => _keepAwakeCheck.IsEnabled = true;
+            _wakeFromSleepCheck.Unchecked += (s, e) => _keepAwakeCheck.IsEnabled = false;
 
             _autoUpdateCheck = new System.Windows.Controls.CheckBox
             {
@@ -2149,6 +2166,10 @@ namespace ShiaPrayerTimes
             if (_wakeFromSleepCheck != null)
             {
                 _settings.WakeFromSleepForAlerts = _wakeFromSleepCheck.IsChecked == true;
+            }
+            if (_keepAwakeCheck != null)
+            {
+                _settings.KeepAwakeAfterPrayerWake = _keepAwakeCheck.IsChecked == true;
             }
             if (_autoUpdateCheck != null)
             {

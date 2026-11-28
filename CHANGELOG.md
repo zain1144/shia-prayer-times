@@ -4,6 +4,18 @@ All notable changes to **Shia Prayer Times (أوقات الصلاة الشيعي
 
 ---
 
+## [v1.2.2] - 2026-11-28
+
+### ✨ Added & Fixed | التحسينات والإصلاحات
+- **Prevent Auto-Returning to Sleep After Prayer Wake (`SleepWakeManager.cs`, `AppSettings.cs`, `SettingsWindow.cs`):**
+  - Added **Keep PC awake after waking for Adhan (`KeepAwakeAfterPrayerWake`, enabled by default)** with a Settings checkbox under Audio & System.
+  - Uses Windows Power Manager (`PowerCreateRequest` / `PowerSetRequest` with `PowerRequestSystemRequired` + `PowerRequestDisplayRequired`) alongside `SetThreadExecutionState` to override the Windows 2-minute unattended sleep timeout after waking for an alert, so the PC remains awake while allowing the display to turn off normally once playback finishes.
+  - Automatically clears the stay-awake lock whenever you manually put the PC to sleep (`PowerModes.Suspend`), then re-engages on the next prayer wake.
+- **Unattended Wake Display Nudge (`SleepWakeManager.cs`):**
+  - Added `PowerRequestDisplayRequired` + `WM_SYSCOMMAND (SC_MONITORPOWER, -1)` broadcast nudge on wake to assist monitor/HDMI speakers waking from sleep.
+
+---
+
 ## [v1.2.1] - 2026-11-28
 
 ### 🐛 Fixed | الإصلاحات

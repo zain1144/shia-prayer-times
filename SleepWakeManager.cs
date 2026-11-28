@@ -8,9 +8,10 @@ using Microsoft.Win32.SafeHandles;
 namespace ShiaPrayerTimes
 {
     /// <summary>
-    /// Manages Windows hardware wake timers (CreateWaitableTimer / SetWaitableTimer with fResume=true)
-    /// and system execution states (SetThreadExecutionState) so the PC can wake from Sleep for
-    /// upcoming prayer alerts and stay awake until Adhan playback completes.
+    /// Manages Windows hardware wake timers (CreateWaitableTimer / SetWaitableTimer with fResume=true),
+    /// Power Manager requests (PowerCreateRequest / PowerSetRequest), and execution states
+    /// so the PC can wake from Sleep for upcoming prayer alerts, wake display/HDMI audio,
+    /// and optionally stay awake instead of falling back to unattended sleep after 2 minutes.
     /// </summary>
     public class SleepWakeManager : IDisposable
     {
@@ -21,6 +22,23 @@ namespace ShiaPrayerTimes
             ES_CONTINUOUS = 0x80000000,
             ES_DISPLAY_REQUIRED = 0x00000002,
             ES_SYSTEM_REQUIRED = 0x00000001
+        }
+
+        private enum POWER_REQUEST_TYPE : int
+        {
+            PowerRequestDisplayRequired = 0,
+            PowerRequestSystemRequired = 1,
+            PowerRequestAwayModeRequired = 2,
+            PowerRequestExecutionRequired = 3
+        }
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        private struct REASON_CONTEXT
+        {
+            public uint Version;
+            public uint Flags;
+            [MarshalAs(UnmanagedType.LPWStr)]
+            public string SimpleReasonString;
         }
 
         [DllImport("kernel32.dll", SetLastError = true)]
@@ -41,6 +59,26 @@ namespace ShiaPrayerTimes
         [DllImport("kernel32.dll", SetLastError = true)]
         private static extern EXECUTION_STATE SetThreadExecutionState(EXECUTION_STATE esFlags);
 
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern IntPtr PowerCreateRequest(ref REASON_CONTEXT Context);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool PowerSetRequest(IntPtr PowerRequest, POWER_REQUEST_TYPE RequestType);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool PowerClearRequest(IntPtr PowerRequest, POWER_REQUEST_TYPE RequestType);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool CloseHandle(IntPtr hObject);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
+        private static readonly IntPtr HWND_BROADCAST = new IntPtr(0xFFFF);
+        private const uint WM_SYSCOMMAND = 0x0112;
+        private static readonly IntPtr SC_MONITORPOWER = new IntPtr(0xF170);
+        private static readonly IntPtr MONITOR_ON = new IntPtr(-1);
+
         private sealed class NativeWaitHandle : WaitHandle
         {
             public NativeWaitHandle(IntPtr handle)
@@ -56,12 +94,18 @@ namespace ShiaPrayerTimes
 
         private NativeWaitHandle _timerWaitHandle;
         private IntPtr _timerRawHandle = IntPtr.Zero;
+        private IntPtr _powerRequestHandle = IntPtr.Zero;
+        private bool _powerSystemReqActive = false;
+        private bool _powerDisplayReqActive = false;
+
         private Thread _waitThread;
         private DispatcherTimer _wakeHoldTimer;
 
         private bool _disposed = false;
         private bool _wakeHoldActive = false;
         private bool _playbackActive = false;
+        private bool _keepAwakeAfterWake = true;
+        private bool _postWakeStayAwakeActive = false;
         private DateTime _scheduledWakeLocal = DateTime.MinValue;
         private DateTime _lastArmedAlertLocal = DateTime.MinValue;
 
@@ -71,6 +115,22 @@ namespace ShiaPrayerTimes
         {
             _dispatcher = dispatcher;
             _onWakeCallback = onWakeCallback;
+
+            try
+            {
+                var ctx = new REASON_CONTEXT
+                {
+                    Version = 0,
+                    Flags = 1,
+                    SimpleReasonString = "Shia Prayer Times Adhan Wake & Playback"
+                };
+                IntPtr pr = PowerCreateRequest(ref ctx);
+                if (pr != IntPtr.Zero && pr != new IntPtr(-1))
+                {
+                    _powerRequestHandle = pr;
+                }
+            }
+            catch { }
 
             _timerRawHandle = CreateWaitableTimer(IntPtr.Zero, false, null);
             if (_timerRawHandle != IntPtr.Zero && _timerRawHandle != new IntPtr(-1))
@@ -95,6 +155,16 @@ namespace ShiaPrayerTimes
             SystemEvents.PowerModeChanged += OnPowerModeChanged;
         }
 
+        public void SetKeepAwakeAfterWake(bool keepAwake)
+        {
+            _keepAwakeAfterWake = keepAwake;
+            if (!keepAwake && _postWakeStayAwakeActive)
+            {
+                _postWakeStayAwakeActive = false;
+                UpdateExecutionStateOnUiThread();
+            }
+        }
+
         private void WaitLoop()
         {
             WaitHandle[] handles = new WaitHandle[] { _signalEvent, _timerWaitHandle };
@@ -109,13 +179,14 @@ namespace ShiaPrayerTimes
                     {
                         // Nudge system & display idle timers immediately so monitor/HDMI audio wake up before UI runs
                         SetThreadExecutionState(EXECUTION_STATE.ES_SYSTEM_REQUIRED | EXECUTION_STATE.ES_DISPLAY_REQUIRED);
+                        try { PostMessage(HWND_BROADCAST, WM_SYSCOMMAND, SC_MONITORPOWER, MONITOR_ON); } catch { }
                         AppLogger.Log("WakeTimer", "Win32 WaitableTimer signaled! Armed target was: " + _lastArmedAlertLocal.ToString("HH:mm:ss"));
 
                         if (_dispatcher != null && !_disposed)
                         {
                             _dispatcher.BeginInvoke((Action)(() =>
                             {
-                                ActivateWakeHold();
+                                ActivateWakeHold(true);
                                 if (_onWakeCallback != null) _onWakeCallback();
                             }));
                         }
@@ -203,12 +274,18 @@ namespace ShiaPrayerTimes
             UpdateExecutionStateOnUiThread();
         }
 
-        private void ActivateWakeHold()
+        private void ActivateWakeHold(bool fromWakeEvent)
         {
             if (_disposed) return;
             _wakeHoldActive = true;
+            if (fromWakeEvent && _keepAwakeAfterWake)
+            {
+                _postWakeStayAwakeActive = true;
+                AppLogger.Log("WakeTimer", "Holding system awake after prayer wake (KeepAwakeAfterPrayerWake=True).");
+            }
             _wakeHoldTimer.Stop();
             _wakeHoldTimer.Start();
+            try { PostMessage(HWND_BROADCAST, WM_SYSCOMMAND, SC_MONITORPOWER, MONITOR_ON); } catch { }
             UpdateExecutionStateOnUiThread();
         }
 
@@ -217,11 +294,41 @@ namespace ShiaPrayerTimes
             if (_disposed) return;
             try
             {
-                if (_wakeHoldActive || _playbackActive)
+                bool wantSystemAwake = _wakeHoldActive || _playbackActive || (_keepAwakeAfterWake && _postWakeStayAwakeActive);
+                bool wantDisplayAwake = _wakeHoldActive || _playbackActive;
+
+                if (_powerRequestHandle != IntPtr.Zero)
                 {
-                    // Keep both system & display active during wake/Adhan playback so HDMI/DisplayPort audio
-                    // endpoints stay powered on and Windows doesn't drop back into unattended sleep.
+                    if (wantSystemAwake && !_powerSystemReqActive)
+                    {
+                        if (PowerSetRequest(_powerRequestHandle, POWER_REQUEST_TYPE.PowerRequestSystemRequired))
+                            _powerSystemReqActive = true;
+                    }
+                    else if (!wantSystemAwake && _powerSystemReqActive)
+                    {
+                        PowerClearRequest(_powerRequestHandle, POWER_REQUEST_TYPE.PowerRequestSystemRequired);
+                        _powerSystemReqActive = false;
+                    }
+
+                    if (wantDisplayAwake && !_powerDisplayReqActive)
+                    {
+                        if (PowerSetRequest(_powerRequestHandle, POWER_REQUEST_TYPE.PowerRequestDisplayRequired))
+                            _powerDisplayReqActive = true;
+                    }
+                    else if (!wantDisplayAwake && _powerDisplayReqActive)
+                    {
+                        PowerClearRequest(_powerRequestHandle, POWER_REQUEST_TYPE.PowerRequestDisplayRequired);
+                        _powerDisplayReqActive = false;
+                    }
+                }
+
+                if (wantDisplayAwake)
+                {
                     SetThreadExecutionState(EXECUTION_STATE.ES_CONTINUOUS | EXECUTION_STATE.ES_SYSTEM_REQUIRED | EXECUTION_STATE.ES_DISPLAY_REQUIRED);
+                }
+                else if (wantSystemAwake)
+                {
+                    SetThreadExecutionState(EXECUTION_STATE.ES_CONTINUOUS | EXECUTION_STATE.ES_SYSTEM_REQUIRED);
                 }
                 else
                 {
@@ -231,14 +338,48 @@ namespace ShiaPrayerTimes
             catch { }
         }
 
+        private void ClearAllPowerRequests()
+        {
+            try
+            {
+                if (_powerRequestHandle != IntPtr.Zero)
+                {
+                    if (_powerDisplayReqActive)
+                    {
+                        PowerClearRequest(_powerRequestHandle, POWER_REQUEST_TYPE.PowerRequestDisplayRequired);
+                        _powerDisplayReqActive = false;
+                    }
+                    if (_powerSystemReqActive)
+                    {
+                        PowerClearRequest(_powerRequestHandle, POWER_REQUEST_TYPE.PowerRequestSystemRequired);
+                        _powerSystemReqActive = false;
+                    }
+                }
+                SetThreadExecutionState(EXECUTION_STATE.ES_CONTINUOUS);
+            }
+            catch { }
+        }
+
         private void OnPowerModeChanged(object sender, PowerModeChangedEventArgs e)
         {
             if (_disposed) return;
-            if (e.Mode == PowerModes.Resume && _dispatcher != null)
+            if (e.Mode == PowerModes.Suspend && _dispatcher != null)
+            {
+                // User or OS initiated sleep: release stay-awake lock so manual sleep works cleanly,
+                // then re-enable once the prayer wake timer wakes the PC again.
+                _dispatcher.BeginInvoke((Action)(() =>
+                {
+                    _postWakeStayAwakeActive = false;
+                    _wakeHoldActive = false;
+                    _wakeHoldTimer.Stop();
+                    ClearAllPowerRequests();
+                }));
+            }
+            else if (e.Mode == PowerModes.Resume && _dispatcher != null)
             {
                 _dispatcher.BeginInvoke((Action)(() =>
                 {
-                    ActivateWakeHold();
+                    ActivateWakeHold(true);
                     if (_onWakeCallback != null) _onWakeCallback();
                 }));
             }
@@ -253,7 +394,12 @@ namespace ShiaPrayerTimes
                 CancelWakeTimerInternal();
                 try { SystemEvents.PowerModeChanged -= OnPowerModeChanged; } catch { }
                 if (_wakeHoldTimer != null) _wakeHoldTimer.Stop();
-                try { SetThreadExecutionState(EXECUTION_STATE.ES_CONTINUOUS); } catch { }
+                ClearAllPowerRequests();
+                if (_powerRequestHandle != IntPtr.Zero)
+                {
+                    try { CloseHandle(_powerRequestHandle); } catch { }
+                    _powerRequestHandle = IntPtr.Zero;
+                }
                 try { _signalEvent.Set(); } catch { }
                 if (_timerWaitHandle != null)
                 {

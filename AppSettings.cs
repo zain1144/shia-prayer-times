@@ -113,6 +113,7 @@ namespace ShiaPrayerTimes
         public bool MinimizeToTrayOnClose { get; set; }
         public bool HasShownTrayMinimizeHint { get; set; }
         public bool WakeFromSleepForAlerts { get; set; }
+        public bool KeepAwakeAfterPrayerWake { get; set; }
         public bool AutoCheckUpdates { get; set; }
         public string LastUpdateCheckUtc { get; set; }
 
@@ -152,6 +153,7 @@ namespace ShiaPrayerTimes
             MinimizeToTrayOnClose = true;
             HasShownTrayMinimizeHint = false;
             WakeFromSleepForAlerts = true;
+            KeepAwakeAfterPrayerWake = true;
             AutoCheckUpdates = true;
             LastUpdateCheckUtc = "";
             NotificationDurationSeconds = 10;

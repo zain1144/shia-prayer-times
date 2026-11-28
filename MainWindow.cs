@@ -61,6 +61,7 @@ namespace ShiaPrayerTimes
             _trayManager = new TrayManager(this, _settings, _audioNotifier);
             _audioNotifier.NotifyIcon = _trayManager.NotifyIcon;
             _sleepWakeManager = new SleepWakeManager(Dispatcher, OnSystemWakeOrResume);
+            _sleepWakeManager.SetKeepAwakeAfterWake(_settings.KeepAwakeAfterPrayerWake);
 
             if (Application.Current != null)
             {
@@ -1163,6 +1164,7 @@ namespace ShiaPrayerTimes
         private void RefreshWakeSchedule()
         {
             if (_sleepWakeManager == null) return;
+            _sleepWakeManager.SetKeepAwakeAfterWake(_settings.KeepAwakeAfterPrayerWake);
             DateTime nextWake = GetNextAlertTimeLocal();
             _sleepWakeManager.ScheduleWake(nextWake);
         }
